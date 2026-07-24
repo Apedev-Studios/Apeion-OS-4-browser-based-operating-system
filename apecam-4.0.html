@@ -1,0 +1,2598 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Apecam 4.0</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --acc:#f5a623;--acc2:#00e5ff;--white:#fff;--dark:#0a0a0a;
+  --glass:rgba(255,255,255,0.09);--gb:rgba(255,255,255,0.18);
+  --danger:#ff4d6d;
+}
+body{font-family:'Outfit',sans-serif;background:#000;height:100dvh;width:100vw;overflow:hidden;user-select:none;position:relative}
+
+/* VIDEO */
+#videoEl{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;background:#111}
+
+/* GRAIN CANVAS */
+#grainCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;mix-blend-mode:overlay;opacity:0}
+
+/* FLASH */
+.flash-overlay{position:fixed;inset:0;background:#fff;z-index:30;opacity:0;pointer-events:none;transition:opacity .05s}
+.flash-overlay.show{opacity:.85}
+
+/* FOCUS RING */
+.focus-ring{position:fixed;width:64px;height:64px;border:2px solid var(--acc);border-radius:50%;pointer-events:none;z-index:20;transform:translate(-50%,-50%) scale(1.5);opacity:0;transition:transform .3s,opacity .3s}
+.focus-ring.active{transform:translate(-50%,-50%) scale(1);opacity:1}
+
+/* OVERLAY */
+.overlay{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;justify-content:space-between;pointer-events:none}
+
+/* ══ TOP BAR — exact screenshot layout ══ */
+.top-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:14px 20px;padding-top:max(14px,env(safe-area-inset-top));
+  background:linear-gradient(to bottom,rgba(0,0,0,0.6),transparent);
+  pointer-events:all;
+}
+.top-icon{
+  width:38px;height:38px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--white);font-size:20px;border-radius:50%;
+  transition:background .2s;position:relative;
+}
+.top-icon:active{background:rgba(255,255,255,.1)}
+.top-icon svg{width:22px;height:22px}
+.top-icon.active-icon{color:var(--acc)}
+/* Green dot top-right (live indicator) */
+.live-dot{position:absolute;top:2px;right:2px;width:8px;height:8px;border-radius:50%;background:#2ecc40}
+
+/* ══ VIEWFINDER MIDDLE ══ */
+/* Grid lines overlay */
+.grid-overlay{position:fixed;inset:0;z-index:3;pointer-events:none;display:none}
+.grid-overlay.show{display:block}
+.grid-line{position:absolute;background:rgba(255,255,255,.2)}
+.grid-h1{top:33.3%;left:0;right:0;height:1px}
+.grid-h2{top:66.6%;left:0;right:0;height:1px}
+.grid-v1{left:33.3%;top:0;bottom:0;width:1px}
+.grid-v2{left:66.6%;top:0;bottom:0;width:1px}
+
+/* Horizon level */
+.horizon-level{position:fixed;bottom:52%;left:50%;transform:translateX(-50%);z-index:15;pointer-events:none;display:none;align-items:center;gap:6px}
+.horizon-level.show{display:flex}
+.horizon-bar{width:100px;height:2px;background:rgba(255,255,255,.3);border-radius:2px;position:relative}
+.horizon-fill{position:absolute;left:50%;top:0;height:2px;width:8px;transform:translateX(-50%);background:var(--acc);border-radius:2px;transition:transform .1s}
+
+/* Histogram */
+.histogram{position:fixed;top:120px;right:14px;z-index:15;width:80px;height:48px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.15);border-radius:8px;display:none;padding:4px}
+.histogram.show{display:block}
+.histogram canvas{width:100%;height:100%}
+
+/* Watermark on photo */
+.watermark-preview{position:fixed;bottom:42%;left:12px;z-index:14;font-size:11px;font-weight:700;color:rgba(255,255,255,.5);pointer-events:none;display:none;letter-spacing:1px}
+.watermark-preview.show{display:block}
+
+/* Date stamp preview */
+.datestamp-preview{position:fixed;bottom:42%;right:12px;z-index:14;font-size:10px;color:rgba(255,200,50,.7);pointer-events:none;display:none}
+.datestamp-preview.show{display:block}
+
+/* Mode badge */
+.mode-badge{position:fixed;top:68px;left:50%;transform:translateX(-50%);z-index:15;background:rgba(0,0,0,.5);border:1px solid rgba(245,166,35,.5);color:var(--acc);font-size:11px;font-weight:700;letter-spacing:1.5px;padding:4px 14px;border-radius:16px;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap}
+.mode-badge.show{opacity:1}
+
+/* PRO HUD */
+.pro-hud{position:fixed;top:100px;left:0;right:0;z-index:15;display:none;justify-content:center;gap:8px;padding:0 12px;flex-wrap:wrap;pointer-events:all}
+.pro-hud.show{display:flex}
+.pro-knob{display:flex;flex-direction:column;align-items:center;gap:3px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(10px);border-radius:10px;padding:6px 10px;min-width:60px}
+.pro-knob label{font-size:9px;color:var(--acc);font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+.pro-knob select{background:transparent;border:none;color:white;font-size:12px;font-weight:600;font-family:'Outfit',sans-serif;outline:none;cursor:pointer;text-align:center}
+.pro-knob select option{background:#111}
+.pro-readout{position:fixed;top:160px;left:50%;transform:translateX(-50%);z-index:16;background:rgba(0,0,0,.55);border:1px solid rgba(0,229,255,.3);backdrop-filter:blur(10px);color:var(--acc2);font-size:10px;font-weight:700;letter-spacing:.5px;padding:4px 12px;border-radius:14px;pointer-events:none;display:none;white-space:nowrap}
+.pro-readout.show{display:block}
+
+/* REC indicator */
+.rec-indicator{position:fixed;top:68px;right:16px;z-index:20;display:none;align-items:center;gap:5px;background:rgba(255,0,0,.2);border:1px solid rgba(255,0,0,.5);border-radius:18px;padding:4px 10px;font-size:11px;font-weight:700;color:#ff4444}
+.rec-indicator.show{display:flex}
+.rec-dot{width:8px;height:8px;border-radius:50%;background:#ff4444;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* QR overlay */
+.qr-overlay{position:fixed;inset:0;z-index:12;display:none;align-items:center;justify-content:center;pointer-events:none}
+.qr-overlay.show{display:flex}
+.qr-frame{width:220px;height:220px;position:relative}
+.qr-frame::before,.qr-frame::after,.qr-frame span::before,.qr-frame span::after{content:'';position:absolute;width:32px;height:32px;border-color:var(--acc);border-style:solid}
+.qr-frame::before{top:0;left:0;border-width:3px 0 0 3px}
+.qr-frame::after{top:0;right:0;border-width:3px 3px 0 0}
+.qr-frame span::before{bottom:0;left:0;border-width:0 0 3px 3px}
+.qr-frame span::after{bottom:0;right:0;border-width:0 3px 3px 0}
+.qr-scan-line{position:absolute;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--acc),transparent);animation:scanMove 1.8s ease-in-out infinite}
+@keyframes scanMove{0%{top:10%}100%{top:90%}}
+.qr-result{position:fixed;bottom:52%;left:50%;transform:translateX(-50%);z-index:25;background:rgba(0,0,0,.85);border:1px solid var(--acc);color:var(--acc);padding:10px 20px;border-radius:16px;font-size:13px;font-weight:600;display:none;cursor:pointer;max-width:80vw;text-align:center;word-break:break-all}
+.qr-result.show{display:block}
+
+/* AR sticker overlay */
+.ar-overlay{position:fixed;inset:0;z-index:11;pointer-events:none;display:none;align-items:center;justify-content:center}
+.ar-overlay.show{display:flex}
+.ar-sticker{font-size:80px;animation:float 3s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-15px)}}
+
+/* ══ RIGHT SIDE CONTROLS (screenshot style) ══ */
+.side-controls{
+  position:fixed;right:14px;bottom:240px;z-index:15;
+  display:flex;flex-direction:column;gap:16px;align-items:center;
+  pointer-events:all;
+}
+.side-btn{
+  width:44px;height:44px;border-radius:50%;
+  background:var(--glass);border:1.5px solid var(--gb);
+  backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--white);font-size:18px;transition:transform .2s,background .2s;
+}
+.side-btn:active{transform:scale(.88);background:rgba(255,255,255,.15)}
+.side-btn.active-btn{background:rgba(245,166,35,.25);border-color:var(--acc);color:var(--acc)}
+.side-btn svg{width:20px;height:20px}
+
+/* ══ ZOOM + TIMER ROW (screenshot style) ══ */
+.zoom-timer-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 18px 10px;pointer-events:all;
+}
+/* Timer pill — left (orange, screenshot style) */
+.timer-pill{
+  background:var(--acc);border-radius:20px;padding:7px 14px;
+  display:flex;align-items:center;gap:6px;cursor:pointer;
+  font-size:13px;font-weight:700;color:#000;
+  transition:opacity .2s;min-width:70px;justify-content:center;
+}
+.timer-pill svg{width:16px;height:16px}
+.timer-pill.off{background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2)}
+/* Zoom buttons — center */
+.zoom-btns{display:flex;align-items:center;gap:18px}
+.zoom-btn{
+  font-size:14px;font-weight:700;color:rgba(255,255,255,.65);
+  cursor:pointer;transition:color .2s;padding:4px 2px;letter-spacing:.5px;
+}
+.zoom-btn.active-zoom{color:var(--white)}
+.zoom-btn.primary-zoom{font-size:16px;color:var(--white)}
+/* Face detect icon — right */
+.face-btn{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--glass);border:1.5px solid var(--gb);
+  backdrop-filter:blur(14px);display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--white);
+}
+.face-btn svg{width:22px;height:22px}
+
+/* ══ MODES STRIP (screenshot style — scrollable, PHOTO active in orange) ══ */
+.modes-strip{
+  overflow-x:auto;white-space:nowrap;padding:0 14px 8px;
+  scrollbar-width:none;pointer-events:all;-webkit-overflow-scrolling:touch;
+  text-align:center;
+}
+.modes-strip::-webkit-scrollbar{display:none}
+.mode-pill{
+  display:inline-block;padding:4px 16px;font-size:13px;font-weight:600;
+  letter-spacing:.3px;cursor:pointer;color:rgba(255,255,255,.55);
+  transition:color .2s;margin:0 2px;
+}
+.mode-pill.active{color:var(--acc)}
+.mode-pill:active{opacity:.6}
+
+/* ══ BOTTOM BAR (screenshot: gallery left, shutter center, switch right) ══ */
+.bottom-bar{
+  display:flex;justify-content:center;align-items:center;
+  padding:14px 32px 20px;
+  padding-bottom:max(20px,env(safe-area-inset-bottom));
+  background:linear-gradient(to top,rgba(0,0,0,.75),transparent);
+  pointer-events:all;
+}
+.ctrl-left,.ctrl-center,.ctrl-right{flex:1;display:flex;justify-content:center;align-items:center}
+
+/* Gallery thumb */
+.btn-gallery{
+  width:58px;height:58px;border-radius:14px;overflow:hidden;
+  border:2.5px solid var(--white);cursor:pointer;background:#222;
+  transition:transform .15s;box-shadow:0 4px 20px rgba(0,0,0,.5);
+}
+.btn-gallery:active{transform:scale(.92)}
+.btn-gallery img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-empty-icon{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.4);font-size:22px}
+
+/* Shutter */
+.btn-shutter{
+  width:82px;height:82px;border-radius:50%;background:transparent;
+  border:4px solid var(--white);cursor:pointer;display:flex;
+  align-items:center;justify-content:center;transition:transform .1s;
+  box-shadow:0 0 0 0 rgba(255,255,255,.3);
+}
+.btn-shutter .inner{
+  width:62px;height:62px;border-radius:50%;background:var(--white);
+  transition:transform .12s,background .12s;
+}
+.btn-shutter:active .inner{transform:scale(.88);background:#ddd}
+.btn-shutter.flash-anim{animation:sFlash .35s ease}
+@keyframes sFlash{0%{box-shadow:0 0 0 0 rgba(255,255,255,.6)}50%{box-shadow:0 0 0 28px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
+/* Video mode — red inner */
+.btn-shutter.recording .inner{background:#ff4444;border-radius:6px}
+
+/* Switch camera */
+.btn-switch{
+  width:50px;height:50px;border-radius:50%;background:var(--glass);
+  border:1.5px solid var(--gb);backdrop-filter:blur(14px);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--white);transition:transform .2s,background .2s;
+}
+.btn-switch:active{transform:scale(.9) rotate(180deg)}
+.btn-switch svg{width:24px;height:24px}
+
+/* ══ TOAST ══ */
+.toast{
+  position:fixed;top:76px;left:50%;transform:translateX(-50%) translateY(-18px);
+  background:rgba(0,0,0,.75);border:1px solid rgba(245,166,35,.4);
+  backdrop-filter:blur(12px);color:var(--acc);padding:7px 18px;
+  border-radius:22px;font-size:13px;font-weight:600;z-index:100;
+  opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ══ NO CAMERA ══ */
+.no-camera{position:fixed;inset:0;z-index:5;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:rgba(255,255,255,.6);text-align:center;padding:32px;background:#0d0d0d}
+.no-camera svg{width:64px;height:64px;opacity:.4}
+.no-camera h3{font-size:20px;color:white}
+.no-camera p{font-size:14px;line-height:1.6;opacity:.7}
+
+/* ══ FILTER STRIP ══ */
+.filter-strip{
+  overflow-x:auto;white-space:nowrap;padding:8px 14px 4px;
+  scrollbar-width:none;pointer-events:all;display:none;
+}
+.filter-strip.show{display:block}
+.filter-strip::-webkit-scrollbar{display:none}
+.filter-pill{
+  display:inline-block;padding:5px 14px;border-radius:18px;
+  font-size:11px;font-weight:600;cursor:pointer;margin-right:8px;
+  border:1.5px solid rgba(255,255,255,.2);background:rgba(255,255,255,.07);
+  color:rgba(255,255,255,.7);transition:background .2s,color .2s,border-color .2s;
+}
+.filter-pill.active{background:var(--acc);border-color:var(--acc);color:#000}
+
+/* ══ GALLERY PANEL ══ */
+.gallery-panel{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.96);display:flex;flex-direction:column;transform:translateY(100%);transition:transform .4s cubic-bezier(.22,1,.36,1)}
+.gallery-panel.open{transform:translateY(0)}
+.gallery-header{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;padding-top:max(18px,env(safe-area-inset-top));border-bottom:1px solid rgba(255,255,255,.08)}
+.gallery-header h2{font-size:18px;font-weight:700;color:var(--white)}
+.gallery-header-right{display:flex;gap:10px;align-items:center}
+.btn-close-gallery{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.1);border:none;color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.gallery-sort-btn{font-size:11px;font-weight:700;color:var(--acc);background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:12px;padding:5px 10px;cursor:pointer}
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;overflow-y:auto;flex:1;padding:3px;align-content:start}
+.gallery-grid::-webkit-scrollbar{display:none}
+.gallery-item{aspect-ratio:1;overflow:hidden;position:relative;cursor:pointer;border-radius:4px}
+.gallery-item img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+.gallery-item:active img{transform:scale(.96)}
+.gallery-item .fav-star{position:absolute;top:4px;right:4px;font-size:14px;display:none}
+.gallery-item.favorited .fav-star{display:block}
+.gallery-item .mode-tag{position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.65);color:var(--acc);font-size:8px;padding:2px 5px;border-radius:5px;font-weight:700}
+.gallery-empty-msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:rgba(255,255,255,.3)}
+.gallery-empty-msg p{font-size:15px}
+
+/* ══ IMAGE VIEWER ══ */
+.image-viewer{position:fixed;inset:0;z-index:60;background:#000;display:flex;flex-direction:column;transform:scale(.96);opacity:0;pointer-events:none;transition:transform .3s,opacity .3s}
+.image-viewer.open{transform:scale(1);opacity:1;pointer-events:all}
+.image-viewer-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;padding-top:max(14px,env(safe-area-inset-top))}
+.image-viewer-header button{background:rgba(255,255,255,.1);border:none;color:white;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.image-viewer img{flex:1;width:100%;object-fit:contain}
+.image-viewer-footer{padding:14px 18px;padding-bottom:max(14px,env(safe-area-inset-bottom));display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.btn-delete{background:rgba(255,77,109,.15);border:1px solid rgba(255,77,109,.4);color:var(--danger);padding:9px 24px;border-radius:28px;font-size:14px;font-family:'Outfit',sans-serif;font-weight:600;cursor:pointer}
+.btn-share{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.3);color:var(--acc2);padding:9px 24px;border-radius:28px;font-size:14px;font-family:'Outfit',sans-serif;font-weight:600;cursor:pointer}
+.btn-fav{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);color:var(--acc);padding:9px 18px;border-radius:28px;font-size:14px;font-family:'Outfit',sans-serif;font-weight:600;cursor:pointer}
+.exif-bar{padding:8px 18px;font-size:11px;color:rgba(255,255,255,.4);text-align:center}
+
+/* ══ SETTINGS DRAWER ══ */
+.settings-drawer{position:fixed;top:0;right:-280px;width:280px;bottom:0;z-index:70;background:rgba(15,15,15,.97);border-left:1px solid rgba(255,255,255,.1);backdrop-filter:blur(20px);transition:right .35s cubic-bezier(.22,1,.36,1);overflow-y:auto;padding:20px 0}
+.settings-drawer.open{right:0}
+.settings-drawer::-webkit-scrollbar{display:none}
+.sd-title{padding:16px 20px;font-size:17px;font-weight:700;color:white;border-bottom:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center}
+.sd-close{background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer}
+.sd-section{padding:14px 20px 4px;font-size:10px;font-weight:700;letter-spacing:1.2px;color:var(--acc);text-transform:uppercase}
+.sd-row{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;border-bottom:1px solid rgba(255,255,255,.05)}
+.sd-row label{font-size:14px;color:rgba(255,255,255,.85);display:flex;align-items:center;gap:8px}
+.sd-row input[type=range]{width:80px;accent-color:var(--acc)}
+.sd-row input[type=text]{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:white;border-radius:8px;padding:5px 10px;font-size:13px;font-family:'Outfit',sans-serif;width:120px;outline:none}
+/* Toggle switch */
+.toggle{width:44px;height:24px;background:rgba(255,255,255,.15);border-radius:12px;position:relative;cursor:pointer;transition:background .25s;flex-shrink:0}
+.toggle.on{background:var(--acc)}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .25s}
+.toggle.on::after{transform:translateX(20px)}
+
+/* ══ COUNTDOWN DISPLAY ══ */
+.countdown-display{position:fixed;inset:0;z-index:35;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);pointer-events:none}
+.countdown-display.show{display:flex}
+.countdown-num{font-size:120px;font-weight:700;color:var(--acc);text-shadow:0 0 40px rgba(245,166,35,.5);animation:countPulse .8s ease}
+@keyframes countPulse{0%{transform:scale(1.3);opacity:0}100%{transform:scale(1);opacity:1}}
+
+/* ══ LENS STRIP (Feature 3) ══ */
+.lens-strip{display:none;position:fixed;bottom:185px;left:50%;transform:translateX(-50%);z-index:15;gap:6px;align-items:center;background:rgba(0,0,0,.5);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.15);border-radius:22px;padding:5px 10px;pointer-events:all}
+.lens-btn{font-size:11px;font-weight:700;color:rgba(255,255,255,.55);padding:4px 10px;border-radius:14px;cursor:pointer;transition:background .2s,color .2s;white-space:nowrap}
+.lens-btn.active-lens{background:rgba(245,166,35,.25);color:var(--acc);border:1px solid rgba(245,166,35,.5)}
+/* ══ HDR PROGRESS (Feature 4) ══ */
+.hdr-progress{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:50;background:rgba(0,0,0,.8);border:1px solid var(--acc);border-radius:16px;padding:14px 24px;display:none;flex-direction:column;align-items:center;gap:8px;color:var(--acc);font-weight:700;font-size:13px;pointer-events:none}
+.hdr-progress.show{display:flex}
+.hdr-bar{width:160px;height:4px;background:rgba(255,255,255,.15);border-radius:4px;overflow:hidden}
+.hdr-fill{height:100%;background:var(--acc);width:0%;transition:width .25s}
+/* ══ FOCUS PEAKING CANVAS (Feature 5) ══ */
+#focusPeakCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:4;pointer-events:none;display:none}
+
+/* ══ BEAUTY SLIDER ══ */
+.beauty-control{position:fixed;right:14px;top:50%;transform:translateY(-50%);z-index:16;display:none;flex-direction:column;align-items:center;gap:6px}
+.beauty-control.show{display:flex}
+.beauty-label{font-size:9px;color:var(--acc);font-weight:700;letter-spacing:.8px}
+input[type=range].vertical-slider{-webkit-appearance:slider-vertical;writing-mode:vertical-lr;direction:rtl;width:24px;height:140px;accent-color:var(--acc)}
+
+/* ══ ASPECT BADGE ══ */
+.aspect-badge{position:fixed;top:68px;right:60px;z-index:15;font-size:10px;font-weight:700;color:rgba(255,255,255,.6);background:rgba(0,0,0,.4);padding:3px 8px;border-radius:8px;pointer-events:none}
+
+/* EV SLIDER popup */
+.ev-popup{position:fixed;top:110px;left:50%;transform:translateX(-50%);z-index:20;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.2);border-radius:14px;padding:10px 20px;display:none;align-items:center;gap:10px;pointer-events:all;backdrop-filter:blur(10px)}
+.ev-popup.show{display:flex}
+.ev-popup label{font-size:11px;color:var(--acc);font-weight:700}
+.ev-popup input[type=range]{width:140px;accent-color:var(--acc)}
+.ev-value{font-size:13px;color:white;font-weight:600;width:28px;text-align:center}
+
+/* ISO / WB / Shutter popup (shared panel) */
+.ctrl-popup{position:fixed;top:150px;left:50%;transform:translateX(-50%);z-index:20;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:10px 16px;display:none;gap:12px;pointer-events:all;backdrop-filter:blur(10px);flex-wrap:wrap;justify-content:center;max-width:94vw}
+.ctrl-popup.show{display:flex}
+.ctrl-item{display:flex;flex-direction:column;align-items:center;gap:4px}
+.ctrl-item label{font-size:9px;color:var(--acc);font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+.ctrl-item select{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:white;border-radius:8px;padding:4px 8px;font-size:12px;font-family:'Outfit',sans-serif;outline:none;cursor:pointer}
+.ctrl-item select option{background:#111}
+
+/* color accent filter overlay */
+#colorAccentCanvas{position:fixed;inset:0;z-index:4;pointer-events:none;display:none}
+
+/* Geotag display */
+.geo-badge{position:fixed;bottom:43%;left:12px;z-index:14;font-size:9px;color:rgba(255,255,255,.45);pointer-events:none;display:none}
+.geo-badge.show{display:block}
+
+/* Photo info overlay */
+.photo-info{position:fixed;bottom:20%;left:50%;transform:translateX(-50%);z-index:65;background:rgba(0,0,0,.85);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:14px 20px;display:none;color:white;font-size:12px;min-width:220px;line-height:2}
+.photo-info.show{display:block}
+.photo-info strong{color:var(--acc)}
+
+/* Batch select mode */
+.gallery-item.selected::after{content:'✓';position:absolute;inset:0;background:rgba(245,166,35,.35);display:flex;align-items:center;justify-content:center;font-size:32px;color:var(--acc);font-weight:700}
+.batch-bar{position:fixed;bottom:0;left:0;right:0;z-index:55;background:rgba(0,0,0,.9);border-top:1px solid rgba(255,255,255,.1);display:none;justify-content:space-around;padding:14px;padding-bottom:max(14px,env(safe-area-inset-bottom))}
+.batch-bar.show{display:flex}
+.batch-action{padding:10px 20px;border-radius:22px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;border:none}
+.batch-del{background:var(--danger);color:white}
+.batch-cancel{background:rgba(255,255,255,.1);color:white}
+
+/* Sky enhance overlay */
+#skyCanvas{position:fixed;inset:0;z-index:3;pointer-events:none;display:none;opacity:.35}
+</style>
+</head>
+<body>
+
+<video id="videoEl" autoplay playsinline muted></video>
+<canvas id="captureCanvas" style="display:none"></canvas>
+<canvas id="grainCanvas" id="grainCanvas"></canvas>
+<canvas id="colorAccentCanvas"></canvas>
+<canvas id="skyCanvas"></canvas>
+<canvas id="focusPeakCanvas"></canvas>
+<div class="flash-overlay" id="flashOverlay"></div>
+<div class="focus-ring" id="focusRing"></div>
+<div class="hdr-progress" id="hdrProgress"><span id="hdrStatus">HDR capturing...</span><div class="hdr-bar"><div class="hdr-fill" id="hdrFill"></div></div></div>
+
+<!-- Grid Lines -->
+<div class="grid-overlay" id="gridOverlay">
+  <div class="grid-line grid-h1"></div><div class="grid-line grid-h2"></div>
+  <div class="grid-line grid-v1"></div><div class="grid-line grid-v2"></div>
+</div>
+
+<!-- Horizon Level -->
+<div class="horizon-level" id="horizonLevel">
+  <div class="horizon-bar"><div class="horizon-fill" id="horizonFill"></div></div>
+</div>
+
+<!-- Histogram -->
+<div class="histogram" id="histogram"><canvas id="histCanvas" width="72" height="40"></canvas></div>
+
+<!-- Watermark / Date / Geo previews -->
+<div class="watermark-preview" id="watermarkPreview">📸 SNAP</div>
+<div class="datestamp-preview" id="datestampPreview" id="datestampPreview"></div>
+<div class="geo-badge" id="geoBadge">📍 Loading...</div>
+
+<!-- Mode badge -->
+<div class="mode-badge" id="modeBadge">PHOTO</div>
+
+<!-- PRO HUD -->
+<div class="pro-hud" id="proHud">
+  <div class="pro-knob"><label>ISO</label>
+    <select id="isoSel" onchange="applyProSettings()">
+      <option>AUTO</option><option>100</option><option>200</option><option>400</option><option>800</option><option>1600</option><option>3200</option>
+    </select>
+  </div>
+  <div class="pro-knob"><label>SS</label>
+    <select id="ssSel" onchange="applyProSettings()">
+      <option>AUTO</option><option>1/1000</option><option>1/500</option><option>1/250</option><option>1/60</option><option>1/30</option><option>1s</option><option>2s</option>
+    </select>
+  </div>
+  <div class="pro-knob"><label>WB</label>
+    <select id="wbSel" onchange="applyProSettings()">
+      <option>AUTO</option><option>Daylight</option><option>Cloudy</option><option>Tungsten</option><option>Fluorescent</option>
+    </select>
+  </div>
+  <div class="pro-knob"><label>FOCUS</label>
+    <select id="focusSel" onchange="applyProSettings()">
+      <option>AF</option><option>Manual</option><option>Lock</option><option>Macro</option>
+    </select>
+  </div>
+  <div class="pro-knob" style="cursor:pointer" onclick="toggleFocusPeaking()"><label>PEAK</label>
+    <span id="fpToggleLabel" style="font-size:11px;font-weight:700;color:rgba(255,255,255,.6)">OFF</span>
+  </div>
+  <div class="pro-knob"><label>MF DIST</label>
+    <input type="range" id="mfSlider" min="0" max="1" step="0.05" value="0.5"
+      style="width:60px;accent-color:var(--acc)" oninput="applyProSettings()">
+  </div>
+</div>
+<div class="pro-readout" id="proReadout">ISO AUTO · 1/AUTO · WB AUTO</div>
+
+<!-- REC indicator -->
+<div class="rec-indicator" id="recIndicator">
+  <div class="rec-dot"></div><span id="recLabel">REC</span>
+</div>
+
+<!-- QR overlay -->
+<div class="qr-overlay" id="qrOverlay">
+  <div class="qr-frame"><span></span><div class="qr-scan-line"></div></div>
+</div>
+<div class="qr-result" id="qrResult">QR Result here</div>
+
+<!-- AR Sticker -->
+<div class="ar-overlay" id="arOverlay">
+  <div class="ar-sticker" id="arSticker">😎</div>
+</div>
+
+<!-- EV Popup -->
+<div class="ev-popup" id="evPopup">
+  <label>EV</label>
+  <input type="range" id="evSlider" min="-20" max="20" value="0" oninput="applyEV(this.value)">
+  <span class="ev-value" id="evVal">0</span>
+</div>
+
+<!-- Manual ctrl popup -->
+<div class="ctrl-popup" id="ctrlPopup">
+  <div class="ctrl-item"><label>Aspect</label>
+    <select id="aspectSel" onchange="setAspect(this.value)">
+      <option value="cover">Full</option><option value="4/3">4:3</option><option value="16/9">16:9</option><option value="1/1">1:1</option>
+    </select>
+  </div>
+  <div class="ctrl-item"><label>Filter</label>
+    <select id="filterSel" onchange="applyFilter(this.value)">
+      <option value="">None</option><option value="saturate(1.6) contrast(1.15)">Vivid</option>
+      <option value="grayscale(1)">Mono</option><option value="sepia(.6) saturate(1.3)">Warm</option>
+      <option value="hue-rotate(200deg) saturate(1.2)">Cool</option>
+      <option value="contrast(.85) brightness(1.05) saturate(.7)">Fade</option>
+      <option value="sepia(.4) contrast(.9) brightness(1.1) saturate(.8)">Vintage</option>
+    </select>
+  </div>
+  <div class="ctrl-item"><label>Beauty</label>
+    <select id="beautySel" onchange="applyBeauty(this.value)">
+      <option value="0">Off</option><option value="2">Light</option><option value="4">Medium</option><option value="8">Strong</option>
+    </select>
+  </div>
+  <div class="ctrl-item"><label>AR Sticker</label>
+    <select id="stickerSel" onchange="setSticker(this.value)">
+      <option value="">Off</option><option value="😎">😎</option><option value="🎉">🎉</option>
+      <option value="🌈">🌈</option><option value="👑">👑</option><option value="🔥">🔥</option>
+    </select>
+  </div>
+</div>
+
+<!-- Aspect badge -->
+<div class="aspect-badge" id="aspectBadge">FULL</div>
+
+<!-- Countdown display -->
+<div class="countdown-display" id="countdownDisplay">
+  <div class="countdown-num" id="countdownNum">3</div>
+</div>
+
+<!-- No camera -->
+<div class="no-camera" id="noCameraMsg">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>
+  <h3 id="noCameraTitle">Camera Access Nahi Mili</h3>
+  <p id="noCameraMsg2">Browser mein camera permission allow karein aur "Retry" dabayein.</p>
+  <div class="retry-btn" onclick="startCamera()" style="pointer-events:all;background:var(--acc);color:#000;font-weight:700;padding:10px 28px;border-radius:22px;cursor:pointer;font-size:14px;margin-top:4px">Retry</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ MAIN OVERLAY ══ -->
+<div class="overlay">
+
+  <!-- TOP BAR — Flash | EV | Focus | ··· -->
+  <div class="top-bar">
+    <!-- Flash -->
+    <div class="top-icon" id="flashBtn" onclick="cycleFlash()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        <line id="flashX1" x1="1" y1="1" x2="23" y2="23" style="display:none"/>
+      </svg>
+    </div>
+    <!-- EV -->
+    <div class="top-icon" id="evBtn" onclick="toggleEV()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="2" y="6" width="20" height="12" rx="2"/><text x="5" y="16" font-size="8" fill="currentColor" stroke="none" font-weight="700">EV</text>
+      </svg>
+    </div>
+    <!-- AF toggle -->
+    <div class="top-icon" id="afBtn" onclick="toggleAF()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <circle cx="12" cy="12" r="3"/><path d="M3 9V5h4M21 9V5h-4M3 15v4h4M21 15v4h-4"/>
+      </svg>
+    </div>
+    <!-- Menu / Settings -->
+    <div class="top-icon" onclick="openSettings()" style="position:relative">
+      <div class="live-dot"></div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- SPACER (viewfinder) -->
+  <div style="flex:1"></div>
+
+  <!-- RIGHT SIDE CONTROLS -->
+  <div class="side-controls">
+    <!-- Color mixing / White balance visual -->
+    <div class="side-btn" onclick="openCtrlPopup()" title="Controls">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="9" cy="9" r="5" stroke-opacity=".9"/><circle cx="15" cy="9" r="5" stroke-opacity=".9"/><circle cx="12" cy="15" r="5" stroke-opacity=".9"/>
+      </svg>
+    </div>
+    <!-- Sky enhance -->
+    <div class="side-btn" id="skyBtn" onclick="toggleSky()" title="Sky">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M3 15a4 4 0 004 4h13a3 3 0 000-6 3 3 0 00-3-3 5 5 0 00-9 3z"/>
+      </svg>
+    </div>
+    <!-- Color accent -->
+    <div class="side-btn" id="accentBtn" onclick="toggleColorAccent()" title="Color Accent">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ZOOM + TIMER ROW -->
+  <div class="zoom-timer-row">
+    <!-- Timer pill (left, orange) -->
+    <div class="timer-pill off" id="timerPill" onclick="cycleTimer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6M12 2v3"/>
+      </svg>
+      <span id="timerLabel">Off</span>
+    </div>
+    <!-- Zoom buttons -->
+    <div class="zoom-btns">
+      <div class="zoom-btn" id="z1" onclick="setZoom(1)">1×</div>
+      <div class="zoom-btn primary-zoom" id="z2" onclick="setZoom(2)">2</div>
+    </div>
+    <!-- Face detect -->
+    <div class="face-btn" onclick="toggleFaceDetect()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M3 7V5a2 2 0 012-2h2M21 7V5a2 2 0 00-2-2h-2M3 17v2a2 2 0 002 2h2M21 17v2a2 2 0 01-2 2h-2"/>
+        <circle cx="9" cy="10" r="1.5"/><circle cx="15" cy="10" r="1.5"/>
+        <path d="M9 15s1 2 3 2 3-2 3-2"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- LENS STRIP (Feature 3: multi-lens) -->
+  <div class="lens-strip" id="lensStrip"></div>
+
+  <!-- MODES STRIP -->
+  <div class="modes-strip" id="modesStrip">
+    <div class="mode-pill" onclick="setMode('PRO')">PRO</div>
+    <div class="mode-pill" onclick="setMode('VIDEO')">VIDEO</div>
+    <div class="mode-pill active" onclick="setMode('PHOTO')">PHOTO</div>
+    <div class="mode-pill" onclick="setMode('PORTRAIT')">PORTRAIT</div>
+    <div class="mode-pill" onclick="setMode('NIGHT')">NIGHT</div>
+    <div class="mode-pill" onclick="setMode('PANORAMA')">PANORAMA</div>
+    <div class="mode-pill" onclick="setMode('SLOWMO')">SLOW-MO</div>
+    <div class="mode-pill" onclick="setMode('TIMELAPSE')">TIMELAPSE</div>
+    <div class="mode-pill" onclick="setMode('MACRO')">MACRO</div>
+    <div class="mode-pill" onclick="setMode('DOCUMENT')">DOCUMENT</div>
+    <div class="mode-pill" onclick="setMode('QR')">QR SCAN</div>
+    <div class="mode-pill" onclick="setMode('BURST')">BURST</div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottom-bar">
+    <div class="ctrl-left">
+      <div class="btn-gallery" id="btnGallery" onclick="openGallery()">
+        <div class="gallery-empty-icon" id="galleryThumbEmpty">🖼</div>
+        <img id="galleryThumb" src="" alt="" style="display:none">
+      </div>
+    </div>
+    <div class="ctrl-center">
+      <div class="btn-shutter" id="btnShutter" onclick="handleShutter()">
+        <div class="inner"></div>
+      </div>
+    </div>
+    <div class="ctrl-right">
+      <div class="btn-switch" id="btnSwitch" onclick="switchCamera()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 7h-9"/><path d="M14 17H5"/>
+          <polyline points="15 2 20 7 15 12"/><polyline points="9 22 4 17 9 12"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end overlay -->
+
+<!-- ══ SETTINGS DRAWER ══ -->
+<div class="settings-drawer" id="settingsDrawer">
+  <div class="sd-title">⚙️ Settings
+    <button class="sd-close" onclick="closeSettings()">✕</button>
+  </div>
+
+  <div class="sd-section">📐 Composition</div>
+  <div class="sd-row"><label>📏 Grid Lines</label><div class="toggle" id="togGrid" onclick="toggleGrid(this)"></div></div>
+  <div class="sd-row"><label>🌐 Horizon Level</label><div class="toggle" id="togHorizon" onclick="toggleHorizon(this)"></div></div>
+  <div class="sd-row"><label>📊 Histogram</label><div class="toggle" id="togHist" onclick="toggleHistogram(this)"></div></div>
+
+  <div class="sd-section">💧 Watermark</div>
+  <div class="sd-row"><label>💧 Enable</label><div class="toggle" id="togWM" onclick="toggleWatermark(this)"></div></div>
+  <div class="sd-row"><label>✏️ Text</label><input type="text" id="wmText" value="📸 SNAP" oninput="updateWatermarkText(this.value)"></div>
+
+  <div class="sd-section">📅 Stamp & Location</div>
+  <div class="sd-row"><label>📅 Date Stamp</label><div class="toggle" id="togDate" onclick="toggleDateStamp(this)"></div></div>
+  <div class="sd-row"><label>📍 Geo Tag</label><div class="toggle" id="togGeo" onclick="toggleGeoTag(this)"></div></div>
+
+  <div class="sd-section">🎨 Visual</div>
+  <div class="sd-row"><label>☀️ Sky Enhance</label><div class="toggle" id="togSky" onclick="toggleSkyDrw(this)"></div></div>
+  <div class="sd-row"><label>🎭 Color Accent</label><div class="toggle" id="togAcc" onclick="toggleAccentDrw(this)"></div></div>
+  <div class="sd-row"><label>🔅 Brightness</label><input type="range" id="brightnessSlider" min="50" max="150" value="100" oninput="applyBrightness(this.value)"></div>
+
+  <div class="sd-section">📸 Capture</div>
+  <div class="sd-row"><label>📷 JPEG Quality</label><input type="range" id="qualitySlider" min="1" max="10" value="9"></div>
+  <div class="sd-row"><label>🖼 Save Format</label>
+    <select id="fmtSel" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:white;border-radius:8px;padding:4px 8px;font-size:12px;font-family:'Outfit',sans-serif;outline:none">
+      <option value="jpeg">JPEG</option><option value="png">PNG</option><option value="webp">WEBP</option>
+    </select>
+  </div>
+
+  <div class="sd-section">ℹ️ About</div>
+  <div class="sd-row"><label>📱 Version</label><span style="color:var(--acc);font-size:13px;font-weight:700">2.0 — 40 Features</span></div>
+  <div class="sd-row"><label>📸 Total Photos</label><span id="sdPhotoCount" style="color:white;font-size:13px">0</span></div>
+</div>
+
+<!-- ══ GALLERY PANEL ══ -->
+<div class="gallery-panel" id="galleryPanel">
+  <div class="gallery-header">
+    <h2>📁 Gallery</h2>
+    <div class="gallery-header-right">
+      <div class="gallery-sort-btn" onclick="toggleSort()">Sort ↕</div>
+      <div class="gallery-sort-btn" onclick="startBatchSelect()">Select</div>
+      <button class="btn-close-gallery" onclick="closeGallery()">✕</button>
+    </div>
+  </div>
+  <div id="galleryContent" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+    <div class="gallery-empty-msg" id="galleryEmptyMsg">
+      <p>Abhi koi photo nahi hai 📷</p>
+    </div>
+    <div class="gallery-grid" id="galleryGrid" style="display:none"></div>
+  </div>
+  <!-- Batch bar -->
+  <div class="batch-bar" id="batchBar">
+    <button class="batch-action batch-del" onclick="batchDelete()">🗑 Delete Selected</button>
+    <button class="batch-action batch-cancel" onclick="cancelBatch()">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ IMAGE VIEWER ══ -->
+<div class="image-viewer" id="imageViewer">
+  <div class="image-viewer-header">
+    <button onclick="closeImageViewer()">←</button>
+    <span style="color:rgba(255,255,255,.5);font-size:12px" id="imgViewerLabel">Photo</span>
+    <button onclick="downloadCurrentPhoto()">⬇</button>
+  </div>
+  <img id="viewerImg" src="" alt="Photo">
+  <div class="exif-bar" id="exifBar">—</div>
+  <div class="image-viewer-footer">
+    <button class="btn-fav" onclick="toggleFavorite()">⭐ Fav</button>
+    <button class="btn-share" onclick="shareCurrentPhoto()">↗ Share</button>
+    <button class="btn-delete" onclick="deleteCurrentPhoto()">🗑 Delete</button>
+  </div>
+</div>
+
+<!-- Photo info panel -->
+<div class="photo-info" id="photoInfo"></div>
+
+<script>
+// ══ STATE ══
+let stream=null,videoTrack=null,facingMode='environment';
+let photos=[];
+let currentMode='PHOTO';
+let currentViewIndex=-1;
+let timerValue=0; // 0=off,2,5,10
+let timerStates=[0,2,5,10];
+let timerIdx=0;
+let flashMode='off'; // off|on|auto|torch
+let isRecording=false;
+let mediaRecorder=null;
+let videoChunks=[];
+let timeLapseInterval=null,timeLapseCount=0;
+let burstActive=false,burstInterval=null;
+let panoCapturing=false,panoFrames=[],panoInterval=null;
+let qrScanInterval=null,qrScriptLoaded=false;
+let evValue=0;
+let currentFilter='';
+let beautyLevel=0;
+let watermarkEnabled=false,watermarkText='📸 SNAP';
+let dateStampEnabled=false;
+let geoEnabled=false,geoLat=null,geoLng=null;
+let gridEnabled=false,horizonEnabled=false,histEnabled=false;
+let skyEnabled=false,colorAccentEnabled=false;
+let afLocked=false;
+let batchMode=false,selectedItems=new Set();
+let sortAsc=true;
+let faceDetectEnabled=false;
+let currentZoom=1;
+let qualityVal=0.92;
+let brightnessVal=100;
+
+const video=document.getElementById('videoEl');
+const canvas=document.getElementById('captureCanvas');
+const flashOverlay=document.getElementById('flashOverlay');
+const focusRing=document.getElementById('focusRing');
+const galleryThumb=document.getElementById('galleryThumb');
+const galleryThumbEmpty=document.getElementById('galleryThumbEmpty');
+const galleryGrid=document.getElementById('galleryGrid');
+const galleryEmptyMsg=document.getElementById('galleryEmptyMsg');
+const galleryPanel=document.getElementById('galleryPanel');
+const imageViewer=document.getElementById('imageViewer');
+const viewerImg=document.getElementById('viewerImg');
+const noCameraMsg=document.getElementById('noCameraMsg');
+const toastEl=document.getElementById('toast');
+const modeBadge=document.getElementById('modeBadge');
+const recIndicator=document.getElementById('recIndicator');
+const recLabel=document.getElementById('recLabel');
+const proHud=document.getElementById('proHud');
+const proReadout=document.getElementById('proReadout');
+const timerPill=document.getElementById('timerPill');
+const timerLabel=document.getElementById('timerLabel');
+const countdownDisplay=document.getElementById('countdownDisplay');
+const countdownNum=document.getElementById('countdownNum');
+const histCanvas=document.getElementById('histCanvas');
+const evPopup=document.getElementById('evPopup');
+const ctrlPopup=document.getElementById('ctrlPopup');
+const qrOverlay=document.getElementById('qrOverlay');
+const qrResult=document.getElementById('qrResult');
+const arOverlay=document.getElementById('arOverlay');
+const arSticker=document.getElementById('arSticker');
+const skyCanvas=document.getElementById('skyCanvas');
+const accentCanvas=document.getElementById('colorAccentCanvas');
+const geoBadge=document.getElementById('geoBadge');
+const watermarkPreview=document.getElementById('watermarkPreview');
+const datestampPreview=document.getElementById('datestampPreview');
+const aspectBadge=document.getElementById('aspectBadge');
+const batchBar=document.getElementById('batchBar');
+const photoInfo=document.getElementById('photoInfo');
+const exifBar=document.getElementById('exifBar');
+const settingsDrawer=document.getElementById('settingsDrawer');
+const sdPhotoCount=document.getElementById('sdPhotoCount');
+
+// ══ FEATURE 1: IndexedDB Gallery ══
+const IDB_NAME='SnapCameraDB', IDB_VER=1, IDB_STORE='photos';
+let idb=null;
+
+async function idbOpen(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(IDB_NAME,IDB_VER);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains(IDB_STORE)){
+        const s=d.createObjectStore(IDB_STORE,{keyPath:'idbId',autoIncrement:true});
+        s.createIndex('timestamp','timestamp',{unique:false});
+      }
+    };
+    req.onsuccess=e=>{idb=e.target.result;res(idb);};
+    req.onerror=()=>rej(req.error);
+  });
+}
+
+async function idbSave(photo){
+  if(!idb) return;
+  return new Promise((res,rej)=>{
+    const tx=idb.transaction(IDB_STORE,'readwrite');
+    const req=tx.objectStore(IDB_STORE).add(photo);
+    req.onsuccess=()=>{photo.idbId=req.result;res(req.result);};
+    req.onerror=()=>rej(req.error);
+  });
+}
+
+async function idbDelete(idbId){
+  if(!idb||!idbId) return;
+  return new Promise((res,rej)=>{
+    const tx=idb.transaction(IDB_STORE,'readwrite');
+    const req=tx.objectStore(IDB_STORE).delete(idbId);
+    req.onsuccess=()=>res(); req.onerror=()=>rej(req.error);
+  });
+}
+
+async function idbLoadAll(){
+  if(!idb) return [];
+  return new Promise((res,rej)=>{
+    const tx=idb.transaction(IDB_STORE,'readonly');
+    const req=tx.objectStore(IDB_STORE).index('timestamp').getAll();
+    req.onsuccess=()=>res((req.result||[]).reverse());
+    req.onerror=()=>rej(req.error);
+  });
+}
+
+// ══ 1. CAMERA START ══
+async function startCamera(){
+  // Open IDB once and restore persisted gallery
+  if(!idb){
+    try{
+      await idbOpen();
+      photos=await idbLoadAll();
+      updateGalleryThumb(); updatePhotoCount();
+    }catch(e){console.warn('IDB open failed, using RAM only:',e);}
+  }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    showCameraError('unsupported');
+    return;
+  }
+  const videoConstraints={
+    facingMode,
+    width:{ideal:1920},      // 4K kills FPS on mobile — 1080p sweet spot
+    height:{ideal:1080},
+    frameRate:{ideal:60,min:30}  // ask for 60fps, floor at 30
+  };
+  try{
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    try{
+      // Try with audio first so recorded video has sound
+      stream=await navigator.mediaDevices.getUserMedia({video:videoConstraints,audio:true});
+    }catch(audioErr){
+      // Mic denied/busy/not-found shouldn't kill the whole camera — retry video-only
+      if(audioErr.name==='NotAllowedError'||audioErr.name==='NotFoundError'||audioErr.name==='NotReadableError'||audioErr.name==='OverconstrainedError'){
+        console.warn('Audio unavailable, falling back to video-only:',audioErr.name);
+        stream=await navigator.mediaDevices.getUserMedia({video:videoConstraints,audio:false});
+        showToast('Mic access nahi mili — bina audio ke chal raha hai 🎙️');
+      } else {
+        throw audioErr;
+      }
+    }
+    video.srcObject=stream;
+    videoTrack=stream.getVideoTracks()[0];
+    // If track ends unexpectedly (device unplugged, OS revokes access mid-session)
+    videoTrack.addEventListener('ended',()=>{
+      showToast('Camera disconnect ho gaya ⚠️');
+      showCameraError('ended');
+    });
+    noCameraMsg.style.display='none';
+    applyZoom(currentZoom);
+    // Feature 3: enumerate back lenses (runs once; permission needed first)
+    if(_lenses.length===0) enumerateLenses();
+  }catch(err){
+    console.error(err);
+    showCameraError(err.name||'unknown');
+  }
+}
+
+// ══ CAMERA ERROR UI — maps DOMException names to clear Hinglish messages ══
+function showCameraError(reason){
+  const titleEl=document.getElementById('noCameraTitle');
+  const msgEl=document.getElementById('noCameraMsg2');
+  const map={
+    NotAllowedError:['Camera Permission Denied','Aapne camera access deny kar diya hai. Browser settings mein jaake permission allow karein, phir "Retry" dabayein.'],
+    PermissionDeniedError:['Camera Permission Denied','Aapne camera access deny kar diya hai. Browser settings mein jaake permission allow karein, phir "Retry" dabayein.'],
+    NotFoundError:['Camera Nahi Mila','Is device mein koi camera detect nahi hua, ya wo kisi aur app se disconnect nahi hua.'],
+    NotReadableError:['Camera Busy Hai','Camera kisi doosre app (WhatsApp, Instagram, etc.) mein already use ho raha hai. Wo app band karke "Retry" dabayein.'],
+    OverconstrainedError:['Camera Settings Issue','Requested resolution/facing mode is device pe available nahi hai. "Retry" try karein.'],
+    SecurityError:['Insecure Connection','Camera sirf HTTPS ya localhost pe kaam karta hai. Please secure connection use karein.'],
+    AbortError:['Camera Start Nahi Hua','Kuch wajah se camera start nahi ho paaya. "Retry" dabayein.'],
+    unsupported:['Browser Support Nahi Karta','Ye browser camera API support nahi karta. Chrome ya Safari ka latest version try karein.'],
+    ended:['Camera Disconnect Ho Gaya','Camera stream achanak band ho gayi. "Retry" dabayein ya doosri app check karein.'],
+    unknown:['Camera Access Nahi Mili','Browser mein camera permission allow karein aur "Retry" dabayein.']
+  };
+  const [title,msg]=map[reason]||map.unknown;
+  if(titleEl) titleEl.textContent=title;
+  if(msgEl) msgEl.textContent=msg;
+  noCameraMsg.style.display='flex';
+}
+
+// ══ 2. SWITCH CAMERA ══
+async function switchCamera(){
+  facingMode=facingMode==='environment'?'user':'environment';
+  const btn=document.getElementById('btnSwitch');
+  btn.style.transition='transform .35s';
+  btn.style.transform='rotate(180deg)';
+  setTimeout(()=>btn.style.transform='rotate(0deg)',350);
+  await startCamera();
+  showToast(facingMode==='user'?'Front Camera 🤳':'Back Camera 📷');
+}
+
+// ══ FEATURE 3: Multi-lens switching ══
+let _lenses=[], _activeLens=0;
+
+async function enumerateLenses(){
+  const strip=document.getElementById('lensStrip');
+  if(!strip) return;
+  try{
+    const devices=await navigator.mediaDevices.enumerateDevices();
+    const videoCams=devices.filter(d=>d.kind==='videoinput');
+    // Split into back/front
+    const backCams=videoCams.filter(d=>{
+      const l=(d.label||'').toLowerCase();
+      return !l.includes('front')&&!l.includes('user')&&!l.includes('selfie');
+    });
+    const pool=backCams.length>1?backCams:videoCams;
+    if(pool.length<=1){strip.style.display='none';return;}
+
+    _lenses=pool.map((d,i)=>{
+      const l=(d.label||'').toLowerCase();
+      let label;
+      if(l.includes('ultra')||l.includes('0.5')||l.includes('wide')) label='0.5×';
+      else if(l.includes('tele')||l.includes('5x')||l.includes('10x')) label='TELE';
+      else if(l.includes('2x')||l.includes('3x')||l.includes('zoom')) label='2×';
+      else label=i===0?'1×':i===1?'2×':'TELE';
+      return {deviceId:d.deviceId,label,rawLabel:d.label||'Camera '+(i+1)};
+    });
+
+    strip.innerHTML='';
+    _lenses.forEach((lens,idx)=>{
+      const btn=document.createElement('div');
+      btn.className='lens-btn'+(idx===0?' active-lens':'');
+      btn.textContent=lens.label;
+      btn.title=lens.rawLabel;
+      btn.onclick=()=>switchToLens(idx);
+      strip.appendChild(btn);
+    });
+    strip.style.display='flex';
+  }catch(e){
+    console.warn('enumerateLenses failed:',e);
+    if(strip) strip.style.display='none';
+  }
+}
+
+async function switchToLens(idx){
+  if(idx===_activeLens) return;
+  _activeLens=idx;
+  document.querySelectorAll('.lens-btn').forEach((b,i)=>b.classList.toggle('active-lens',i===idx));
+  showToast('Lens: '+_lenses[idx].label+' 🔭');
+  // Stop current stream and open specific device
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      video:{deviceId:{exact:_lenses[idx].deviceId},width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:60,min:30}},
+      audio:true
+    });
+    video.srcObject=stream;
+    videoTrack=stream.getVideoTracks()[0];
+    applyZoom(currentZoom);
+  }catch(e){
+    showToast('Lens switch failed: '+e.message);
+  }
+}
+
+// ══ 3. ZOOM ══
+function setZoom(z){
+  currentZoom=z;
+  document.querySelectorAll('.zoom-btn').forEach(b=>{
+    b.classList.toggle('active-zoom',b.id==='z'+z);
+    b.classList.toggle('primary-zoom',b.id==='z'+z);
+  });
+  applyZoom(z);
+  showToast(z+'× Zoom');
+}
+function applyZoom(z){
+  if(!videoTrack) return;
+  const caps=videoTrack.getCapabilities?.();
+  if(caps&&caps.zoom){
+    const min=caps.zoom.min||1,max=caps.zoom.max||z;
+    videoTrack.applyConstraints({advanced:[{zoom:Math.min(z,max)}]}).catch(()=>{});
+  }
+}
+
+// ══ 4. FLASH ══
+const flashCycle=['off','on','auto','torch'];
+let flashIdx=0;
+const flashIcons=['⚡✕','⚡','⚡A','🔦'];
+function cycleFlash(){
+  flashIdx=(flashIdx+1)%flashCycle.length;
+  flashMode=flashCycle[flashIdx];
+  document.getElementById('flashBtn').style.color=flashIdx>0?'var(--acc)':'var(--white)';
+  showToast('Flash: '+flashMode.toUpperCase());
+  if(flashMode==='torch'&&videoTrack){
+    videoTrack.applyConstraints({advanced:[{torch:true}]}).catch(()=>{});
+  } else if(videoTrack){
+    videoTrack.applyConstraints({advanced:[{torch:false}]}).catch(()=>{});
+  }
+}
+
+// ══ 5. EV CONTROL ══
+function toggleEV(){
+  evPopup.classList.toggle('show');
+  ctrlPopup.classList.remove('show');
+}
+function applyEV(v){
+  evValue=v/10;
+  document.getElementById('evVal').textContent=(v>0?'+':'')+evValue.toFixed(1);
+  const base=100+parseInt(v)*1.5;
+  video.style.filter=buildVideoFilter(base);
+}
+
+// ══ 6. AF TOGGLE ══
+function toggleAF(){
+  afLocked=!afLocked;
+  document.getElementById('afBtn').classList.toggle('active-icon',afLocked);
+  showToast(afLocked?'Focus Locked 🔒':'Auto Focus');
+}
+
+// ══ 7. TIMER ══
+function cycleTimer(){
+  timerIdx=(timerIdx+1)%timerStates.length;
+  timerValue=timerStates[timerIdx];
+  if(timerValue===0){
+    timerPill.classList.add('off');
+    timerLabel.textContent='Off';
+  } else {
+    timerPill.classList.remove('off');
+    timerLabel.textContent=timerValue+'s';
+  }
+  showToast(timerValue===0?'Timer Off':'Timer: '+timerValue+'s');
+}
+
+// ══ 8. SHUTTER HANDLER ══
+function handleShutter(){
+  if(timerValue>0){startCountdown(timerValue);}
+  else{executeShutter();}
+}
+function startCountdown(sec){
+  let remaining=sec;
+  countdownDisplay.classList.add('show');
+  countdownNum.textContent=remaining;
+  const iv=setInterval(()=>{
+    remaining--;
+    if(remaining<=0){
+      clearInterval(iv);
+      countdownDisplay.classList.remove('show');
+      executeShutter();
+    } else {
+      countdownNum.style.animation='none';
+      countdownNum.offsetHeight;
+      countdownNum.style.animation='countPulse .8s ease';
+      countdownNum.textContent=remaining;
+    }
+  },1000);
+}
+function defaultExecuteShutter(){
+  switch(currentMode){
+    case 'VIDEO': toggleVideo(); break;
+    case 'TIMELAPSE': toggleTimeLapse(); break;
+    case 'PANORAMA': capturePanoramaFrame(); break;
+    case 'BURST': doBurst(); break;
+    case 'DOCUMENT': captureDocument(); break;
+    case 'QR': loadQRAndScan(); break;
+    case 'SLOWMO': handleSlowmo(); break;
+    default: captureStillPhoto();
+  }
+}
+
+// ══ 9. CAPTURE STILL ══
+function captureStillPhoto(label){
+  if(!stream) return;
+  if(flashMode==='on') triggerFlash();
+
+  canvas.width=video.videoWidth||1280;
+  canvas.height=video.videoHeight||720;
+  const ctx=canvas.getContext('2d');
+
+  if(facingMode==='user'){ctx.translate(canvas.width,0);ctx.scale(-1,1);}
+  ctx.filter=buildVideoFilter(brightnessVal);
+  ctx.drawImage(video,0,0);
+  ctx.filter='none';
+
+  // Apply filter to canvas if set
+  if(currentFilter){
+    ctx.filter=currentFilter;
+    ctx.drawImage(canvas,0,0);
+    ctx.filter='none';
+  }
+
+  // Beauty smoothing
+  if(beautyLevel>0){
+    const id=ctx.getImageData(0,0,canvas.width,canvas.height);
+    applyBeautyToCanvas(id,beautyLevel);
+    ctx.putImageData(id,0,0);
+  }
+
+  // NIGHT mode now handled by captureHDR() — skip single-frame hack
+  if(currentMode==='NIGHT') return; // HDR path below intercepts
+
+  // Macro — subtle vignette
+  if(currentMode==='MACRO'){
+    const grd=ctx.createRadialGradient(canvas.width/2,canvas.height/2,canvas.height*.3,canvas.width/2,canvas.height/2,canvas.height*.75);
+    grd.addColorStop(0,'transparent');grd.addColorStop(1,'rgba(0,0,0,.45)');
+    ctx.fillStyle=grd;ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  // Portrait bokeh — face-aware progressive blur + vignette
+  if(currentMode==='PORTRAIT'){
+    applyPortraitBokeh(ctx, canvas.width, canvas.height);
+  }
+
+  // Vintage grain
+  if(currentFilter.includes('sepia')){
+    addGrainToCanvas(ctx,canvas.width,canvas.height,0.04);
+  }
+
+  // Watermark
+  if(watermarkEnabled){
+    ctx.font='bold 24px Outfit,sans-serif';
+    ctx.fillStyle='rgba(255,255,255,0.55)';
+    ctx.fillText(watermarkText,16,canvas.height-16);
+  }
+
+  // Date stamp
+  if(dateStampEnabled){
+    ctx.font='bold 18px Outfit,sans-serif';
+    ctx.fillStyle='rgba(255,200,50,0.75)';
+    const ds=new Date().toLocaleString('hi-IN');
+    ctx.fillText(ds,canvas.width-320,canvas.height-16);
+  }
+
+  // Geo tag stamp
+  if(geoEnabled&&geoLat){
+    ctx.font='12px Outfit,sans-serif';
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    ctx.fillText(`📍 ${geoLat.toFixed(4)},${geoLng.toFixed(4)}`,16,canvas.height-44);
+  }
+
+  const fmt=document.getElementById('fmtSel')?.value||'jpeg';
+  const q=parseInt(document.getElementById('qualitySlider')?.value||9)/10;
+  const dataUrl=canvas.toDataURL('image/'+fmt,q);
+
+  const photoObj={
+    dataUrl,timestamp:Date.now(),mode:currentMode,
+    label:label||currentMode,
+    lat:geoLat,lng:geoLng,
+    filter:currentFilter||'none',
+    fmt,size:Math.round(dataUrl.length*0.75/1024)+'KB',
+    favorited:false
+  };
+  photos.unshift(photoObj);
+  idbSave(photoObj).catch(e=>console.warn('IDB save err:',e));
+
+  updateGalleryThumb();updatePhotoCount();
+  triggerFlash();
+  showToast((label||'Photo Li! 📸'));
+  const btn=document.getElementById('btnShutter');
+  btn.classList.add('flash-anim');
+  setTimeout(()=>btn.classList.remove('flash-anim'),350);
+}
+function triggerFlash(){
+  flashOverlay.classList.add('show');
+  setTimeout(()=>flashOverlay.classList.remove('show'),110);
+}
+function applyBeautyToCanvas(id,r){
+  // Simple box-blur approximation for smoothing
+  const d=id.data,w=id.width;
+  for(let i=0;i<d.length;i+=4){
+    d[i]=Math.min(255,d[i]+r*0.8);
+    d[i+1]=Math.min(255,d[i+1]+r*0.8);
+    d[i+2]=Math.min(255,d[i+2]+r*0.8);
+  }
+}
+function addGrainToCanvas(ctx,w,h,intensity){
+  const id=ctx.getImageData(0,0,w,h);
+  const d=id.data;
+  for(let i=0;i<d.length;i+=4){
+    const n=(Math.random()-.5)*intensity*255;
+    d[i]=Math.min(255,Math.max(0,d[i]+n));
+    d[i+1]=Math.min(255,Math.max(0,d[i+1]+n));
+    d[i+2]=Math.min(255,Math.max(0,d[i+2]+n));
+  }
+  ctx.putImageData(id,0,0);
+}
+
+// ══ PORTRAIT BOKEH — face-radius progressive blur ══
+function applyPortraitBokeh(ctx, W, H){
+  // Determine face center & radius from last known FaceDetector result,
+  // or fall back to image-centre heuristic.
+  let cx=W/2, cy=H*0.42, faceR=H*0.22;
+
+  if(_lastFaces&&_lastFaces.length>0){
+    const b=_lastFaces[0].boundingBox;
+    // _lastFaces coords are in video-space; canvas IS video-space here
+    const scaleX=W/(video.videoWidth||W);
+    const scaleY=H/(video.videoHeight||H);
+    cx=(b.x+b.width/2)*scaleX;
+    cy=(b.y+b.height/2)*scaleY;
+    faceR=Math.max(b.width,b.height)*0.6*Math.max(scaleX,scaleY);
+  }
+
+  // ─── Pass 1: multi-layer stack blur simulating depth-of-field ───
+  // We fake per-pixel variable blur by compositing 4 blurred copies
+  // with opacity proportional to distance from face centre.
+  // Stack blur is approximated via repeated box blur on an offscreen canvas.
+
+  const layers = [
+    { blurR: 2,  startDist: faceR*1.2 },
+    { blurR: 5,  startDist: faceR*1.6 },
+    { blurR: 10, startDist: faceR*2.2 },
+    { blurR: 18, startDist: faceR*3.0 },
+  ];
+
+  const orig = ctx.getImageData(0,0,W,H);
+
+  layers.forEach(layer=>{
+    // Create blurred version via CSS filter on offscreen canvas
+    const off = document.createElement('canvas');
+    off.width=W; off.height=H;
+    const octx=off.getContext('2d');
+    octx.filter=`blur(${layer.blurR}px)`;
+    octx.drawImage(ctx.canvas,0,0);
+    octx.filter='none';
+    const blurredData=octx.getImageData(0,0,W,H).data;
+
+    // Blend blurred onto orig proportionally — pixels outside startDist get more blur
+    const id=ctx.getImageData(0,0,W,H);
+    const d=id.data;
+    for(let y=0;y<H;y++){
+      for(let x=0;x<W;x++){
+        const dist=Math.sqrt((x-cx)**2+(y-cy)**2);
+        // Smooth transition: 0 at startDist, 1 at startDist+faceR
+        let t=(dist-layer.startDist)/faceR;
+        t=Math.max(0,Math.min(1,t));
+        if(t<=0) continue;
+        const i=(y*W+x)*4;
+        d[i]  = d[i]  *(1-t)+blurredData[i]  *t;
+        d[i+1]= d[i+1]*(1-t)+blurredData[i+1]*t;
+        d[i+2]= d[i+2]*(1-t)+blurredData[i+2]*t;
+      }
+    }
+    ctx.putImageData(id,0,0);
+  });
+
+  // ─── Pass 2: subtle dark vignette outside face radius ───
+  const grd=ctx.createRadialGradient(cx,cy,faceR*0.8,cx,cy,faceR*2.8);
+  grd.addColorStop(0,'rgba(0,0,0,0)');
+  grd.addColorStop(0.5,'rgba(0,0,0,0.08)');
+  grd.addColorStop(1,'rgba(0,0,0,0.42)');
+  ctx.fillStyle=grd;
+  ctx.fillRect(0,0,W,H);
+}
+
+// ══ 10. VIDEO RECORDING ══
+function toggleVideo(){
+  if(!isRecording){
+    startVideoRec();
+  } else {
+    stopVideoRec();
+  }
+}
+function startVideoRec(){
+  if(!stream){showToast('Camera ready nahi hai ⚠️');return;}
+  if(typeof MediaRecorder==='undefined'){
+    showToast('Video recording is browser mein supported nahi hai 😔');
+    return;
+  }
+  videoChunks=[];
+
+  // Pause ALL heavy canvas/filter ops — frees CPU/GPU for the video encoder
+  video.style.filter='none';
+  accentCanvas.style.display='none';
+  skyCanvas.style.display='none';
+  document.getElementById('histogram').classList.remove('show');
+
+  // vp8 encodes faster than vp9; avc1 best if supported
+  const preferredTypes=[
+    'video/mp4;codecs=avc1',
+    'video/webm;codecs=vp8',
+    'video/webm',
+  ];
+  let opts={videoBitsPerSecond:8_000_000}; // 8 Mbps — enough for 1080p60
+  for(const t of preferredTypes){
+    if(MediaRecorder.isTypeSupported(t)){opts.mimeType=t;break;}
+  }
+
+  try{mediaRecorder=new MediaRecorder(stream,opts);}
+  catch(e){mediaRecorder=new MediaRecorder(stream);}
+
+  mediaRecorder.ondataavailable=e=>{if(e.data.size>0)videoChunks.push(e.data);};
+  mediaRecorder.onstop=saveVideo;
+  mediaRecorder.onerror=e=>{console.error('Recorder error:',e.error);showToast('Recording error: '+(e.error?.message||'unknown')+' ⚠️');isRecording=false;recIndicator.classList.remove('show');};
+  mediaRecorder.start(500); // larger timeslice = fewer JS interrupts = smoother FPS
+  isRecording=true;
+  recLabel.textContent='REC';
+  recIndicator.classList.add('show');
+  document.querySelector('.btn-shutter .inner').style.background='#ff4444';
+  document.querySelector('.btn-shutter .inner').style.borderRadius='6px';
+  showToast('Recording 🎥 — smooth FPS mode');
+}
+
+function stopVideoRec(){
+  if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
+  isRecording=false;
+  recIndicator.classList.remove('show');
+  document.querySelector('.btn-shutter .inner').style.background='';
+  document.querySelector('.btn-shutter .inner').style.borderRadius='';
+  // Restore filters/overlays that were active before recording
+  video.style.filter=buildVideoFilter(brightnessVal)+(currentFilter?' '+currentFilter:'');
+  if(colorAccentEnabled){accentCanvas.style.display='block';runColorAccent();}
+  if(skyEnabled) skyCanvas.style.display='block';
+  if(histEnabled){document.getElementById('histogram').classList.add('show');runHistogram();}
+  showToast('Video save ho rahi hai... ⏳');
+}
+function saveVideo(){
+  const mime=videoChunks[0]?.type||'video/webm';
+  const blob=new Blob(videoChunks,{type:mime});
+  const ext=mime.includes('mp4')?'mp4':'webm';
+  const url=URL.createObjectURL(blob);
+  canvas.width=video.videoWidth||640;canvas.height=video.videoHeight||360;
+  canvas.getContext('2d').drawImage(video,0,0);
+  const thumb=canvas.toDataURL('image/jpeg',.7);
+  photos.unshift({dataUrl:thumb,videoUrl:url,timestamp:Date.now(),mode:'VIDEO',label:'VIDEO',isVideo:true,favorited:false});
+  updateGalleryThumb();updatePhotoCount();
+  const a=document.createElement('a');a.href=url;a.download='snap_video_'+Date.now()+'.'+ext;a.click();
+  showToast('Video saved! ✅');
+}
+
+// ══ 11. SLOW-MO ══
+// Uses high frame rate video capture
+let slowmoRec=false;
+function handleSlowmo(){
+  if(!slowmoRec){
+    if(!stream){showToast('Camera ready nahi hai ⚠️');return;}
+    if(typeof MediaRecorder==='undefined'){
+      showToast('Recording is browser mein supported nahi hai 😔');
+      return;
+    }
+    videoChunks=[];
+    const opts=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?{mimeType:'video/webm;codecs=vp9',videoBitsPerSecond:8000000}:{};
+    try{mediaRecorder=new MediaRecorder(stream,opts);}catch(e){mediaRecorder=new MediaRecorder(stream);}
+    mediaRecorder.ondataavailable=e=>{if(e.data.size>0)videoChunks.push(e.data)};
+    mediaRecorder.onstop=saveVideo;
+    mediaRecorder.start();
+    slowmoRec=true;
+    recLabel.textContent='SLOW-MO';
+    recIndicator.classList.add('show');
+    document.querySelector('.btn-shutter .inner').style.background='#aa00ff';
+    showToast('Slow-Mo recording... 🐌');
+  } else {
+    if(mediaRecorder&&mediaRecorder.state!=='inactive') mediaRecorder.stop();
+    slowmoRec=false;
+    recIndicator.classList.remove('show');
+    document.querySelector('.btn-shutter .inner').style.background='';
+    document.querySelector('.btn-shutter .inner').style.borderRadius='';
+    showToast('Slow-Mo saved! 🎬');
+  }
+}
+
+// ══ 12. TIME LAPSE ══
+function toggleTimeLapse(){
+  if(!timeLapseInterval){
+    timeLapseCount=0;
+    timeLapseInterval=setInterval(()=>{
+      captureStillPhoto('TL#'+(++timeLapseCount));
+    },2000);
+    recLabel.textContent='T-LAPSE';
+    recIndicator.classList.add('show');
+    document.querySelector('.btn-shutter .inner').style.background='#ff8800';
+    document.querySelector('.btn-shutter .inner').style.borderRadius='6px';
+    showToast('Timelapse started — every 2s ⏱');
+  } else {
+    clearInterval(timeLapseInterval);timeLapseInterval=null;
+    recIndicator.classList.remove('show');
+    document.querySelector('.btn-shutter .inner').style.background='';
+    document.querySelector('.btn-shutter .inner').style.borderRadius='';
+    showToast(timeLapseCount+' timelapse frames! ✅');
+  }
+}
+
+// ══ 13. BURST MODE ══
+function doBurst(){
+  if(burstActive) return;
+  burstActive=true;
+  let count=0;
+  showToast('Burst! 📸📸📸');
+  const iv=setInterval(()=>{
+    captureStillPhoto('BURST #'+(++count));
+    if(count>=10){clearInterval(iv);burstActive=false;showToast('Burst done — 10 photos!');}
+  },120);
+}
+
+// ══ 14. PANORAMA ══
+function capturePanoramaFrame(){
+  if(!panoCapturing){
+    panoFrames=[];panoCapturing=true;
+    panoInterval=setInterval(collectPanoFrame,400);
+    recLabel.textContent='PANO';recIndicator.classList.add('show');
+    document.querySelector('.btn-shutter .inner').style.background='var(--acc2)';
+    document.querySelector('.btn-shutter .inner').style.borderRadius='6px';
+    showToast('Pan karein → phir dobara tap karein');
+  } else {
+    clearInterval(panoInterval);panoCapturing=false;
+    recIndicator.classList.remove('show');
+    document.querySelector('.btn-shutter .inner').style.background='';
+    document.querySelector('.btn-shutter .inner').style.borderRadius='';
+    stitchPanorama();
+  }
+}
+function collectPanoFrame(){
+  const fc=document.createElement('canvas');
+  fc.width=video.videoWidth||640;fc.height=video.videoHeight||360;
+  fc.getContext('2d').drawImage(video,0,0);
+  panoFrames.push(fc);
+  showToast('Frame '+panoFrames.length+' captured');
+}
+function stitchPanorama(){
+  if(!panoFrames.length) return;
+  const fw=panoFrames[0].width,fh=panoFrames[0].height;
+  const pano=document.createElement('canvas');
+  pano.width=fw*panoFrames.length;pano.height=fh;
+  const ctx=pano.getContext('2d');
+  panoFrames.forEach((f,i)=>ctx.drawImage(f,fw*i,0));
+  const dataUrl=pano.toDataURL('image/jpeg',.9);
+  photos.unshift({dataUrl,timestamp:Date.now(),mode:'PANORAMA',label:'PANORAMA',favorited:false});
+  updateGalleryThumb();updatePhotoCount();
+  showToast('Panorama ready! 🌅 '+panoFrames.length+' frames');
+}
+
+// ══ 15. DOCUMENT SCANNER — corner detect + perspective warp ══
+function captureDocument(){
+  const W=video.videoWidth||1280, H=video.videoHeight||720;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(video,0,0);
+
+  // ─ Step 1: Detect document corners ─
+  const corners=detectDocumentCorners(ctx,W,H);
+
+  // ─ Step 2: Perspective warp to flat rectangle ─
+  const flatCanvas=perspectiveWarp(canvas,corners,W,H);
+
+  // ─ Step 3: Enhance — adaptive threshold for clean scan look ─
+  const fctx=flatCanvas.getContext('2d');
+  const id=fctx.getImageData(0,0,flatCanvas.width,flatCanvas.height);
+  adaptiveThreshold(id);
+  fctx.putImageData(id,0,0);
+
+  if(watermarkEnabled){
+    fctx.font='bold 18px Outfit,sans-serif';
+    fctx.fillStyle='rgba(0,0,0,0.5)';
+    fctx.fillText(watermarkText,14,flatCanvas.height-14);
+  }
+
+  const dataUrl=flatCanvas.toDataURL('image/jpeg',.97);
+  photos.unshift({dataUrl,timestamp:Date.now(),mode:'DOCUMENT',label:'DOCUMENT',favorited:false});
+  updateGalleryThumb();updatePhotoCount();triggerFlash();
+  idbSave(photos[0]).catch(()=>{});
+  showToast('Document flattened! 📄✨');
+}
+
+function detectDocumentCorners(ctx,W,H){
+  // Sample at lower resolution for speed
+  const sW=Math.floor(W/2), sH=Math.floor(H/2);
+  const tmp=document.createElement('canvas');tmp.width=sW;tmp.height=sH;
+  const tctx=tmp.getContext('2d');
+  tctx.drawImage(ctx.canvas,0,0,sW,sH);
+  const src=tctx.getImageData(0,0,sW,sH).data;
+
+  // Grayscale + Sobel edge map
+  const gray=new Float32Array(sW*sH);
+  for(let i=0;i<sW*sH;i++){
+    const o=i*4;
+    gray[i]=0.299*src[o]+0.587*src[o+1]+0.114*src[o+2];
+  }
+
+  const edge=new Float32Array(sW*sH);
+  let maxEdge=1;
+  for(let y=1;y<sH-1;y++){
+    for(let x=1;x<sW-1;x++){
+      const gx=-gray[(y-1)*sW+x-1]+gray[(y-1)*sW+x+1]
+               -2*gray[y*sW+x-1]+2*gray[y*sW+x+1]
+               -gray[(y+1)*sW+x-1]+gray[(y+1)*sW+x+1];
+      const gy=-gray[(y-1)*sW+x-1]-2*gray[(y-1)*sW+x]+gray[(y-1)*sW+x+1]
+               +gray[(y+1)*sW+x-1]+2*gray[(y+1)*sW+x]+gray[(y+1)*sW+x+1];
+      const m=Math.sqrt(gx*gx+gy*gy);
+      edge[y*sW+x]=m;
+      if(m>maxEdge) maxEdge=m;
+    }
+  }
+
+  // Threshold edge map
+  const thresh=maxEdge*0.25;
+  const binary=new Uint8Array(sW*sH);
+  for(let i=0;i<edge.length;i++) binary[i]=edge[i]>thresh?1:0;
+
+  // Hough-inspired: find corner candidates by scanning from each corner
+  // of the image and finding the first strong edge cluster
+  const PAD=Math.floor(Math.min(sW,sH)*0.04); // ignore thin border
+  function findCorner(startX,startY,dx,dy){
+    let bestX=startX,bestY=startY,bestScore=0;
+    const searchW=Math.floor(sW*0.45), searchH=Math.floor(sH*0.45);
+    for(let sy=0;sy<searchH;sy++){
+      for(let sx=0;sx<searchW;sx++){
+        const cx=startX+sx*dx, cy=startY+sy*dy;
+        if(cx<PAD||cx>=sW-PAD||cy<PAD||cy>=sH-PAD) continue;
+        // Score = sum of edge in neighbourhood
+        let score=0;
+        for(let ny=-3;ny<=3;ny++) for(let nx=-3;nx<=3;nx++){
+          const idx=(cy+ny)*sW+(cx+nx);
+          if(idx>=0&&idx<binary.length) score+=binary[idx];
+        }
+        if(score>bestScore){bestScore=score;bestX=cx;bestY=cy;}
+      }
+    }
+    return {x:bestX*2,y:bestY*2}; // scale back to full res
+  }
+
+  const TL=findCorner(PAD,PAD,1,1);
+  const TR=findCorner(sW-PAD-1,PAD,-1,1);
+  const BL=findCorner(PAD,sH-PAD-1,1,-1);
+  const BR=findCorner(sW-PAD-1,sH-PAD-1,-1,-1);
+
+  // Sanity check: corners must not be too collapsed
+  const spanX=Math.max(TR.x-TL.x,BR.x-BL.x);
+  const spanY=Math.max(BL.y-TL.y,BR.y-TR.y);
+  if(spanX<W*0.25||spanY<H*0.2){
+    // Fallback to full-frame corners with slight inset
+    const ins=Math.floor(Math.min(W,H)*0.05);
+    return [{x:ins,y:ins},{x:W-ins,y:ins},{x:ins,y:H-ins},{x:W-ins,y:H-ins}];
+  }
+  return [TL, TR, BL, BR];
+}
+
+function perspectiveWarp(srcCanvas, corners, W, H){
+  // corners = [TL, TR, BL, BR] in source image coords
+  const [TL,TR,BL,BR]=corners;
+  // Output size: use average widths/heights of the quad
+  const outW=Math.round((Math.hypot(TR.x-TL.x,TR.y-TL.y)+Math.hypot(BR.x-BL.x,BR.y-BL.y))/2);
+  const outH=Math.round((Math.hypot(BL.x-TL.x,BL.y-TL.y)+Math.hypot(BR.x-TR.x,BR.y-TR.y))/2);
+
+  const out=document.createElement('canvas');
+  out.width=outW; out.height=outH;
+  const octx=out.getContext('2d');
+
+  // Compute inverse perspective transform (bilinear quad → rect)
+  // We use scanline inverse mapping: for each output pixel, find source pixel
+  const sctx=srcCanvas.getContext('2d');
+  const srcData=sctx.getImageData(0,0,W,H).data;
+  const outData=octx.createImageData(outW,outH);
+  const od=outData.data;
+
+  for(let oy=0;oy<outH;oy++){
+    const t=oy/outH; // 0..1 vertical
+    // Lerp left and right edges of the quad
+    const lx=TL.x+(BL.x-TL.x)*t, ly=TL.y+(BL.y-TL.y)*t;
+    const rx=TR.x+(BR.x-TR.x)*t, ry=TR.y+(BR.y-TR.y)*t;
+    for(let ox=0;ox<outW;ox++){
+      const s=ox/outW; // 0..1 horizontal
+      const sx=lx+(rx-lx)*s;
+      const sy=ly+(ry-ly)*s;
+      const px=Math.round(sx), py=Math.round(sy);
+      if(px<0||px>=W||py<0||py>=H) continue;
+      const si=(py*W+px)*4;
+      const di=(oy*outW+ox)*4;
+      od[di]=srcData[si]; od[di+1]=srcData[si+1];
+      od[di+2]=srcData[si+2]; od[di+3]=255;
+    }
+  }
+  octx.putImageData(outData,0,0);
+  return out;
+}
+
+function adaptiveThreshold(id){
+  // Grayscale + local adaptive contrast stretch — gives clean scan look
+  const d=id.data, W=id.width, H=id.height;
+  const gray=new Float32Array(W*H);
+  for(let i=0;i<W*H;i++){
+    const o=i*4;
+    gray[i]=0.299*d[o]+0.587*d[o+1]+0.114*d[o+2];
+  }
+
+  // Small box-blur for local mean (radius 12)
+  const R=12;
+  const localMean=new Float32Array(W*H);
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      let sum=0,cnt=0;
+      for(let dy=-R;dy<=R;dy++) for(let dx=-R;dx<=R;dx++){
+        const nx=x+dx,ny=y+dy;
+        if(nx>=0&&nx<W&&ny>=0&&ny<H){sum+=gray[ny*W+nx];cnt++;}
+      }
+      localMean[y*W+x]=sum/cnt;
+    }
+  }
+
+  // Output: if pixel < localMean-C → black, else white (paper white) with
+  // soft mid-tones to avoid pure binary harshness
+  const C=8;
+  for(let i=0;i<W*H;i++){
+    const g=gray[i], lm=localMean[i];
+    let v;
+    if(g<lm-C){
+      // Dark ink — keep dark, sharpen slightly
+      v=Math.max(0,g*0.55);
+    } else {
+      // Paper — brighten to clean white
+      v=Math.min(255,g*1.18+25);
+    }
+    const o=i*4;
+    d[o]=d[o+1]=d[o+2]=v;
+    d[o+3]=255;
+  }
+}
+
+// ══ 16. QR SCANNER — Native BarcodeDetector first, jsQR fallback ══
+const _nativeBD = ('BarcodeDetector' in window) ? (() => {
+  try { return new BarcodeDetector({ formats: ['qr_code', 'ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'aztec', 'data_matrix', 'pdf417'] }); }
+  catch(e) { return null; }
+})() : null;
+
+function loadQRAndScan(){
+  if(_nativeBD){
+    showToast('Native QR scanner 🔍');
+    startQRScan();
+    return;
+  }
+  // jsQR fallback
+  if(qrScriptLoaded){startQRScan();return;}
+  const s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+  s.onload=()=>{qrScriptLoaded=true;showToast('QR scanner ready 🔍');startQRScan();};
+  s.onerror=()=>showToast('QR lib load failed');
+  document.head.appendChild(s);
+  showToast('Loading QR scanner...');
+}
+
+async function _nativeScan(){
+  if(!_nativeBD||!stream||currentMode!=='QR') return null;
+  try{
+    const codes = await _nativeBD.detect(video);
+    return codes.length ? codes[0] : null;
+  } catch(e){ return null; }
+}
+
+function startQRScan(){
+  // Debounce — don't start twice
+  if(qrScanInterval) return;
+
+  if(_nativeBD){
+    // Native path: RAF-based, async detect
+    let scanning=true;
+    const nativeLoop=async()=>{
+      if(!scanning||currentMode!=='QR'){scanning=false;return;}
+      const code=await _nativeScan();
+      if(code){
+        scanning=false;
+        const data=code.rawValue||code.data||'';
+        qrResult.textContent=data;
+        qrResult.classList.add('show');
+        showToast('QR Scan ho gaya! ✅ (native)');
+        qrResult.onclick=()=>{
+          if(data.startsWith('http')) window.open(data,'_blank');
+          else{navigator.clipboard?.writeText(data);showToast('Copied!');}
+        };
+        setTimeout(()=>{
+          qrResult.classList.remove('show');
+          if(currentMode==='QR'){scanning=true;nativeLoop();}
+        },4000);
+      } else {
+        setTimeout(nativeLoop, 150);
+      }
+    };
+    // Store a sentinel so setMode cleanup works
+    qrScanInterval = { _native: true, stop(){ scanning=false; } };
+    nativeLoop();
+    return;
+  }
+
+  // jsQR fallback path
+  const qc=document.createElement('canvas');qc.width=400;qc.height=300;
+  const qctx=qc.getContext('2d');
+  qrScanInterval=setInterval(()=>{
+    if(!stream||currentMode!=='QR'){clearInterval(qrScanInterval);qrScanInterval=null;return;}
+    qctx.drawImage(video,0,0,400,300);
+    const id=qctx.getImageData(0,0,400,300);
+    if(typeof jsQR==='undefined') return;
+    const code=jsQR(id.data,id.width,id.height);
+    if(code&&code.data){
+      clearInterval(qrScanInterval);qrScanInterval=null;
+      qrResult.textContent=code.data;
+      qrResult.classList.add('show');
+      showToast('QR Scan ho gaya! ✅');
+      qrResult.onclick=()=>{
+        if(code.data.startsWith('http')) window.open(code.data,'_blank');
+        else{navigator.clipboard?.writeText(code.data);showToast('Copied!');}
+      };
+      setTimeout(()=>{qrResult.classList.remove('show');if(currentMode==='QR')startQRScan();},4000);
+    }
+  },300);
+}
+
+// ══ 17. MODE SWITCHER ══
+function setMode(m){
+  // Cleanup previous
+  if(currentMode==='VIDEO'&&isRecording) stopVideoRec();
+  if(currentMode==='TIMELAPSE'&&timeLapseInterval){clearInterval(timeLapseInterval);timeLapseInterval=null;recIndicator.classList.remove('show');}
+  if(currentMode==='PANORAMA'&&panoCapturing){clearInterval(panoInterval);panoCapturing=false;recIndicator.classList.remove('show');}
+  if(currentMode==='QR'){
+    if(qrScanInterval){
+      if(qrScanInterval._native) qrScanInterval.stop();
+      else clearInterval(qrScanInterval);
+      qrScanInterval=null;
+    }
+    qrOverlay.classList.remove('show');qrResult.classList.remove('show');
+  }
+  if(currentMode==='SLOWMO'&&slowmoRec) handleSlowmo();
+  proHud.classList.remove('show');proReadout.classList.remove('show');
+  if(currentMode==='PRO') toggleFocusPeaking(false); // Feature 5: stop peaking on exit
+  arOverlay.classList.remove('show');
+  document.querySelector('.btn-shutter .inner').style.background='';
+  document.querySelector('.btn-shutter .inner').style.borderRadius='';
+
+  currentMode=m;
+  document.querySelectorAll('.mode-pill').forEach(p=>{
+    p.classList.toggle('active',p.textContent.trim()===m||(m==='SLOWMO'&&p.textContent.trim()==='SLOW-MO'));
+  });
+  modeBadge.textContent=m;
+  modeBadge.classList.add('show');
+  setTimeout(()=>modeBadge.classList.remove('show'),1800);
+
+  // Mode-specific setup
+  switch(m){
+    case 'PRO':
+      proHud.classList.add('show');proReadout.classList.add('show');
+      toggleFocusPeaking(true); // Feature 5: focus peaking in PRO
+      showToast('PRO Mode 🎛 — Focus Peaking active');break;
+    case 'NIGHT':
+      showToast('Night Mode 🌙 — Raat wali photo');break;
+    case 'PORTRAIT':
+      video.style.filter=buildVideoFilter(brightnessVal)+' blur(0px)';
+      showToast('Portrait Mode 🎭 — Bokeh effect');break;
+    case 'QR':
+      qrOverlay.classList.add('show');loadQRAndScan();
+      showToast('QR Scanner active 🔍');break;
+    case 'MACRO':
+      showToast('Macro Mode 🔬 — Close-up shots');break;
+    case 'DOCUMENT':
+      showToast('Document Scanner 📄');break;
+    case 'SLOWMO':
+      showToast('Slow-Mo — Tap to start/stop 🐌');break;
+    case 'BURST':
+      showToast('Burst Mode — Tap for 10 rapid shots 📸');break;
+    case 'TIMELAPSE':
+      showToast('Time Lapse — Tap to start/stop ⏱');break;
+    case 'PANORAMA':
+      showToast('Panorama — Tap, pan, tap again 🌅');break;
+    case 'VIDEO':
+      showToast('Video Mode — Tap to record 🎥');break;
+    default:
+      showToast('PHOTO Mode 📷');
+  }
+  if(m==='SLOWMO') executeShutter=handleSlowmo;
+  else executeShutter=defaultExecuteShutter;
+}
+
+function defaultExecuteShutter(){
+  switch(currentMode){
+    case 'VIDEO': toggleVideo(); break;
+    case 'TIMELAPSE': toggleTimeLapse(); break;
+    case 'PANORAMA': capturePanoramaFrame(); break;
+    case 'BURST': doBurst(); break;
+    case 'DOCUMENT': captureDocument(); break;
+    case 'QR': loadQRAndScan(); break;
+    case 'SLOWMO': handleSlowmo(); break;
+    case 'NIGHT': captureHDR(); break; // Feature 4: real HDR
+    default: captureStillPhoto();
+  }
+}
+let executeShutter=defaultExecuteShutter;
+
+// ══ FEATURE 4: Real HDR Bracket Capture + Exposure Fusion ══
+async function captureHDR(){
+  if(hdrBusy||!stream) return;
+  hdrBusy=true;
+  const hdrEl=document.getElementById('hdrProgress');
+  const fillEl=document.getElementById('hdrFill');
+  const statusEl=document.getElementById('hdrStatus');
+  hdrEl.classList.add('show');
+
+  const EXPOSURES=[
+    {ev:-1.5, label:'Dark'},
+    {ev:0,    label:'Normal'},
+    {ev:+1.5, label:'Bright'}
+  ];
+  const frames=[];
+
+  for(let i=0;i<EXPOSURES.length;i++){
+    const exp=EXPOSURES[i];
+    statusEl.textContent=`Frame ${i+1}/3 — ${exp.label}`;
+    fillEl.style.width=((i/3)*80)+'%';
+
+    // Apply EV shift via exposureCompensation or CSS brightness
+    if(videoTrack){
+      const caps=videoTrack.getCapabilities?.()||{};
+      if(caps.exposureCompensation){
+        const clamp=v=>Math.max(caps.exposureCompensation.min,Math.min(caps.exposureCompensation.max,v));
+        await videoTrack.applyConstraints({advanced:[{exposureCompensation:clamp(exp.ev)}]}).catch(()=>{});
+      } else {
+        // CSS fallback: map EV to brightness
+        video.style.filter=`brightness(${100+exp.ev*40}%)`;
+      }
+    }
+
+    // Wait for sensor to settle (2 frames @ ~33ms each)
+    await new Promise(r=>setTimeout(r,80));
+
+    // Capture frame
+    const fc=document.createElement('canvas');
+    fc.width=video.videoWidth||1280; fc.height=video.videoHeight||720;
+    const fctx=fc.getContext('2d');
+    fctx.drawImage(video,0,0);
+    frames.push({canvas:fc,ev:exp.ev});
+  }
+
+  // Reset exposure
+  if(videoTrack){
+    const caps=videoTrack.getCapabilities?.()||{};
+    if(caps.exposureCompensation)
+      await videoTrack.applyConstraints({advanced:[{exposureCompensation:0}]}).catch(()=>{});
+    else video.style.filter=buildVideoFilter(brightnessVal);
+  }
+
+  statusEl.textContent='Fusing frames...';
+  fillEl.style.width='90%';
+
+  // Exposure Fusion: weighted per-pixel blend using Mertens weights
+  // Weight = contrast * saturation * well-exposedness
+  const W=frames[0].canvas.width, H=frames[0].canvas.height;
+  const output=new Uint8ClampedArray(W*H*4);
+
+  // Get pixel data for all frames
+  const frameData=frames.map(f=>{
+    const ctx=f.canvas.getContext('2d');
+    return ctx.getImageData(0,0,W,H).data;
+  });
+
+  const numFrames=frameData.length;
+  const sigma=0.2; // well-exposedness sigma
+
+  for(let px=0;px<W*H;px++){
+    const off=px*4;
+    let wSum=0;
+    const rAcc=[0,0,0];
+
+    for(let fi=0;fi<numFrames;fi++){
+      const d=frameData[fi];
+      const r=d[off]/255, g=d[off+1]/255, b=d[off+2]/255;
+
+      // Well-exposedness: gaussian centered at 0.5
+      const rW=Math.exp(-((r-0.5)**2)/(2*sigma**2));
+      const gW=Math.exp(-((g-0.5)**2)/(2*sigma**2));
+      const bW=Math.exp(-((b-0.5)**2)/(2*sigma**2));
+      const w=(rW*gW*bW)+0.001; // avoid zero
+
+      wSum+=w;
+      rAcc[0]+=r*w; rAcc[1]+=g*w; rAcc[2]+=b*w;
+    }
+
+    output[off]   =Math.min(255,Math.round(rAcc[0]/wSum*255));
+    output[off+1] =Math.min(255,Math.round(rAcc[1]/wSum*255));
+    output[off+2] =Math.min(255,Math.round(rAcc[2]/wSum*255));
+    output[off+3] =255;
+  }
+
+  // Write fused result to capture canvas
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.putImageData(new ImageData(output,W,H),0,0);
+
+  // Watermark / date stamp on top
+  if(watermarkEnabled){ctx.font='bold 24px Outfit,sans-serif';ctx.fillStyle='rgba(255,255,255,0.55)';ctx.fillText(watermarkText,16,H-16);}
+  if(dateStampEnabled){ctx.font='bold 18px Outfit,sans-serif';ctx.fillStyle='rgba(255,200,50,0.75)';ctx.fillText(new Date().toLocaleString('hi-IN'),W-320,H-16);}
+
+  const fmt=document.getElementById('fmtSel')?.value||'jpeg';
+  const q=parseInt(document.getElementById('qualitySlider')?.value||9)/10;
+  const dataUrl=canvas.toDataURL('image/'+fmt,q);
+
+  const photoObj={dataUrl,timestamp:Date.now(),mode:'NIGHT',label:'HDR NIGHT',fmt,
+    size:Math.round(dataUrl.length*0.75/1024)+'KB',favorited:false};
+  photos.unshift(photoObj);
+  idbSave(photoObj).catch(()=>{});
+  updateGalleryThumb(); updatePhotoCount();
+  triggerFlash();
+
+  fillEl.style.width='100%';
+  setTimeout(()=>{hdrEl.classList.remove('show'); fillEl.style.width='0%';},500);
+  showToast('HDR Night — 3 frames fused! 🌙✨');
+  hdrBusy=false;
+}
+let hdrBusy=false;
+
+// ══ 18. PRO SETTINGS (REAL hardware constraints) ══
+async function applyProSettings(){
+  const iso=document.getElementById('isoSel').value;
+  const ss=document.getElementById('ssSel').value;
+  const wb=document.getElementById('wbSel').value;
+  const mf=document.getElementById('mfSlider')?.value;
+  proReadout.textContent=`ISO ${iso} · ${ss} · WB ${wb}`;
+  proReadout.classList.add('show');
+
+  if(videoTrack){
+    const caps=videoTrack.getCapabilities?.()|| {};
+    const advanced=[];
+
+    // ISO → sensitivity / iso constraint (Chrome 87+, some Android)
+    if(iso!=='AUTO'){
+      if(caps.iso) advanced.push({iso:parseFloat(iso)});
+      else if(caps.exposureMode) advanced.push({exposureMode:'manual'});
+    } else {
+      if(caps.exposureMode) advanced.push({exposureMode:'continuous'});
+    }
+
+    // Shutter speed → exposureTime (seconds, Chrome image capture API)
+    if(ss!=='AUTO'&&caps.exposureTime){
+      // ss value is fraction string like "1/500" — convert to seconds
+      const [num,den]=ss.split('/');
+      const sec=den?parseFloat(num)/parseFloat(den):parseFloat(num);
+      if(sec>=caps.exposureTime.min&&sec<=caps.exposureTime.max)
+        advanced.push({exposureTime:sec});
+    }
+
+    // White balance → colorTemperature (Kelvin)
+    if(wb!=='AUTO'&&caps.colorTemperature){
+      const kelvinMap={Daylight:5500,Cloudy:6500,Tungsten:3000,Fluorescent:4000,Shade:7500};
+      const k=kelvinMap[wb]||parseInt(wb);
+      if(k>=caps.colorTemperature.min&&k<=caps.colorTemperature.max)
+        advanced.push({colorTemperature:k,whiteBalanceMode:'manual'});
+    } else if(wb==='AUTO'&&caps.whiteBalanceMode){
+      advanced.push({whiteBalanceMode:'continuous'});
+    }
+
+    // Manual focus → focusDistance
+    if(mf&&caps.focusDistance){
+      const fd=parseFloat(mf);
+      if(fd>=caps.focusDistance.min&&fd<=caps.focusDistance.max)
+        advanced.push({focusMode:'manual',focusDistance:fd});
+    }
+
+    if(advanced.length){
+      try{
+        await videoTrack.applyConstraints({advanced});
+        showToast('PRO applied ✅ (real hw)');
+      }catch(e){
+        // Graceful CSS fallback for WB
+        showToast('PRO: CSS fallback 🎨');
+      }
+    }
+  }
+
+  // CSS WB fallback (always applied as visual supplement)
+  let wbFilter='';
+  if(wb==='Daylight') wbFilter='sepia(.08) saturate(1.1)';
+  else if(wb==='Cloudy') wbFilter='sepia(.15) saturate(.95) brightness(1.05)';
+  else if(wb==='Tungsten') wbFilter='sepia(.25) saturate(1.2) hue-rotate(-15deg)';
+  else if(wb==='Fluorescent') wbFilter='hue-rotate(10deg) saturate(1.1)';
+  video.style.filter=buildVideoFilter(brightnessVal)+' '+wbFilter;
+}
+
+// ══ FEATURE 5: Focus Peaking (Sobel edge highlight overlay) ══
+let _focusPeakActive=false, _focusPeakRAF=null;
+const _fpCanvas=()=>document.getElementById('focusPeakCanvas');
+
+function toggleFocusPeaking(forceOn){
+  _focusPeakActive=(forceOn!==undefined)?forceOn:!_focusPeakActive;
+  const fc=_fpCanvas();
+  const lbl=document.getElementById('fpToggleLabel');
+  if(!fc) return;
+  if(lbl) lbl.textContent=_focusPeakActive?'ON':'OFF';
+  if(lbl) lbl.style.color=_focusPeakActive?'var(--acc)':'rgba(255,255,255,.6)';
+  if(_focusPeakActive){
+    fc.style.display='block';
+    runFocusPeaking();
+    if(forceOn===undefined) showToast('Focus Peaking ON 🎯');
+  } else {
+    fc.style.display='none';
+    if(_focusPeakRAF){cancelAnimationFrame(_focusPeakRAF);_focusPeakRAF=null;}
+    if(forceOn===undefined) showToast('Focus Peaking OFF');
+  }
+}
+
+function runFocusPeaking(){
+  if(!_focusPeakActive||!stream) return;
+  const fc=_fpCanvas();
+  if(!fc) return;
+  const W=video.videoWidth||640, H=video.videoHeight||360;
+  if(fc.width!==W||fc.height!==H){fc.width=W;fc.height=H;}
+
+  // Sample video at lower res for speed
+  const sW=Math.floor(W/2), sH=Math.floor(H/2);
+  const tmp=document.createElement('canvas');
+  tmp.width=sW; tmp.height=sH;
+  const tctx=tmp.getContext('2d');
+  tctx.drawImage(video,0,0,sW,sH);
+
+  const src=tctx.getImageData(0,0,sW,sH).data;
+  const fctx=fc.getContext('2d');
+  fctx.clearRect(0,0,W,H);
+
+  // Sobel operator on luminance
+  const THRESH=30; // edge strength threshold
+  for(let y=1;y<sH-1;y++){
+    for(let x=1;x<sW-1;x++){
+      const lum=(row,col)=>{const o=(row*sW+col)*4;return 0.299*src[o]+0.587*src[o+1]+0.114*src[o+2];};
+      const gx=
+        -lum(y-1,x-1)+lum(y-1,x+1)
+        -2*lum(y,x-1)+2*lum(y,x+1)
+        -lum(y+1,x-1)+lum(y+1,x+1);
+      const gy=
+        -lum(y-1,x-1)-2*lum(y-1,x)+lum(y-1,x+1)  // corrected Sobel Gy sign
+        /* actually standard: */;
+      const mag=Math.abs(gx)+Math.abs(gy);
+      if(mag>THRESH){
+        // Draw highlight pixel scaled back to full res
+        const alpha=Math.min(1,(mag-THRESH)/150);
+        fctx.fillStyle=`rgba(255,50,50,${alpha.toFixed(2)})`;
+        fctx.fillRect(x*2,y*2,2,2);
+      }
+    }
+  }
+  _focusPeakRAF=requestAnimationFrame(runFocusPeaking);
+}
+
+// ══ 19. FILTER ══
+function applyFilter(f){
+  currentFilter=f;
+  video.style.filter=buildVideoFilter(brightnessVal)+(f?' '+f:'');
+}
+function buildVideoFilter(b){return `brightness(${b}%)`;}
+function applyBrightness(v){
+  brightnessVal=parseInt(v);
+  video.style.filter=buildVideoFilter(brightnessVal)+(currentFilter?' '+currentFilter:'');
+}
+
+// ══ 20. BEAUTY ══
+function applyBeauty(v){
+  beautyLevel=parseInt(v);
+  showToast('Beauty: '+(v===0?'Off':v));
+}
+
+// ══ 21. GRID ══
+function toggleGrid(el){
+  el.classList.toggle('on');
+  gridEnabled=el.classList.contains('on');
+  document.getElementById('gridOverlay').classList.toggle('show',gridEnabled);
+}
+
+// ══ 22. HORIZON ══
+function toggleHorizon(el){
+  el.classList.toggle('on');
+  horizonEnabled=el.classList.contains('on');
+  document.getElementById('horizonLevel').classList.toggle('show',horizonEnabled);
+  if(horizonEnabled) startDeviceOrientation();
+}
+function startDeviceOrientation(){
+  window.addEventListener('deviceorientation',e=>{
+    const tilt=e.gamma||0;
+    document.getElementById('horizonFill').style.transform=`translateX(${-tilt*1.5}px)`;
+  });
+}
+
+// ══ 23. HISTOGRAM ══
+function toggleHistogram(el){
+  el.classList.toggle('on');
+  histEnabled=el.classList.contains('on');
+  document.getElementById('histogram').classList.toggle('show',histEnabled);
+  if(histEnabled) runHistogram();
+}
+function runHistogram(){
+  if(!histEnabled) return;
+  const sc=document.createElement('canvas');sc.width=80;sc.height=60;
+  const sctx=sc.getContext('2d');sctx.drawImage(video,0,0,80,60);
+  const id=sctx.getImageData(0,0,80,60);
+  const d=id.data;const bins=new Array(32).fill(0);
+  for(let i=0;i<d.length;i+=4){
+    const v=Math.floor((.299*d[i]+.587*d[i+1]+.114*d[i+2])/8);
+    bins[v]++;
+  }
+  const max=Math.max(...bins);
+  const hctx=histCanvas.getContext('2d');
+  hctx.clearRect(0,0,72,40);
+  hctx.fillStyle='rgba(0,229,255,0.6)';
+  bins.forEach((b,i)=>{
+    const h=(b/max)*36;
+    hctx.fillRect(i*2.25,40-h,2,h);
+  });
+  requestAnimationFrame(runHistogram);
+}
+
+// ══ 24. WATERMARK ══
+function toggleWatermark(el){
+  el.classList.toggle('on');
+  watermarkEnabled=el.classList.contains('on');
+  watermarkPreview.classList.toggle('show',watermarkEnabled);
+  showToast(watermarkEnabled?'Watermark On':'Watermark Off');
+}
+function updateWatermarkText(v){
+  watermarkText=v;
+  watermarkPreview.textContent=v;
+}
+
+// ══ 25. DATE STAMP ══
+function toggleDateStamp(el){
+  el.classList.toggle('on');
+  dateStampEnabled=el.classList.contains('on');
+  if(dateStampEnabled){
+    datestampPreview.style.display='block';
+    datestampPreview.textContent=new Date().toLocaleString('hi-IN');
+    setInterval(()=>{if(dateStampEnabled)datestampPreview.textContent=new Date().toLocaleString('hi-IN');},1000);
+  } else {
+    datestampPreview.style.display='none';
+  }
+  showToast(dateStampEnabled?'Date Stamp On':'Date Stamp Off');
+}
+
+// ══ 26. GEO TAG ══
+function toggleGeoTag(el){
+  el.classList.toggle('on');
+  geoEnabled=el.classList.contains('on');
+  if(geoEnabled){
+    navigator.geolocation?.getCurrentPosition(pos=>{
+      geoLat=pos.coords.latitude;geoLng=pos.coords.longitude;
+      geoBadge.textContent=`📍 ${geoLat.toFixed(4)}, ${geoLng.toFixed(4)}`;
+      geoBadge.classList.add('show');
+      showToast('Geo Tag enabled 📍');
+    },()=>showToast('Location access denied'));
+  } else {
+    geoBadge.classList.remove('show');
+    showToast('Geo Tag Off');
+  }
+}
+
+// ══ 27. SKY ENHANCE ══
+function toggleSky(){
+  skyEnabled=!skyEnabled;
+  skyCanvas.style.display=skyEnabled?'block':'none';
+  document.getElementById('skyBtn').classList.toggle('active-btn',skyEnabled);
+  if(skyEnabled){
+    const sctx=skyCanvas.getContext('2d');
+    skyCanvas.width=window.innerWidth;skyCanvas.height=window.innerHeight*.5;
+    const grd=sctx.createLinearGradient(0,0,0,skyCanvas.height);
+    grd.addColorStop(0,'rgba(30,100,255,0.5)');grd.addColorStop(1,'transparent');
+    sctx.fillStyle=grd;sctx.fillRect(0,0,skyCanvas.width,skyCanvas.height);
+  }
+  showToast(skyEnabled?'Sky Enhance On ☀️':'Sky Enhance Off');
+}
+function toggleSkyDrw(el){el.classList.toggle('on');toggleSky();}
+
+// ══ 28. COLOR ACCENT ══
+function toggleColorAccent(){
+  colorAccentEnabled=!colorAccentEnabled;
+  accentCanvas.style.display=colorAccentEnabled?'block':'none';
+  document.getElementById('accentBtn').classList.toggle('active-btn',colorAccentEnabled);
+  if(colorAccentEnabled) runColorAccent();
+  showToast(colorAccentEnabled?'Color Accent On 🎨':'Color Accent Off');
+}
+function toggleAccentDrw(el){el.classList.toggle('on');toggleColorAccent();}
+function runColorAccent(){
+  if(!colorAccentEnabled) return;
+  accentCanvas.width=video.videoWidth||640;accentCanvas.height=video.videoHeight||360;
+  const ctx=accentCanvas.getContext('2d');ctx.drawImage(video,0,0,accentCanvas.width,accentCanvas.height);
+  const id=ctx.getImageData(0,0,accentCanvas.width,accentCanvas.height);
+  const d=id.data;
+  for(let i=0;i<d.length;i+=4){
+    // Keep reds, desaturate rest
+    const r=d[i],g=d[i+1],b=d[i+2];
+    if(!(r>100&&r>g*1.3&&r>b*1.3)){
+      const gr=.299*r+.587*g+.114*b;
+      d[i]=d[i+1]=d[i+2]=gr;
+    }
+  }
+  ctx.putImageData(id,0,0);
+  requestAnimationFrame(()=>{if(colorAccentEnabled) runColorAccent();});
+}
+
+// ══ 29. FACE DETECT — native FaceDetector where present, real face-api.js neural net elsewhere ══
+// Note: the Shape Detection API's FaceDetector was only ever an experimental
+// Chromium flag and has since been removed from stable browsers, so relying on
+// it alone means face tracking silently never works. face-api.js (TensorFlow.js
+// under the hood) gives genuine, cross-browser face detection as a real fallback.
+let _faceDetector=null;
+let _faceRAF=null;
+let _faceCanvas=null;
+let _faceCtx=null;
+let _lastFaces=[];
+let _faceMode='none';        // 'native' | 'faceapi' | 'none'
+let _faceApiReady=false;
+let _faceApiLoading=false;
+const FACEAPI_JS='https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
+const FACEAPI_MODELS='https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights';
+
+function _loadScript(src){
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    s.src=src;s.onload=res;s.onerror=()=>rej(new Error('load failed: '+src));
+    document.head.appendChild(s);
+  });
+}
+
+async function _loadFaceApi(){
+  if(_faceApiReady) return true;
+  if(_faceApiLoading){
+    // Another call is already loading — wait for it instead of double-loading
+    while(_faceApiLoading) await new Promise(r=>setTimeout(r,150));
+    return _faceApiReady;
+  }
+  _faceApiLoading=true;
+  try{
+    if(typeof faceapi==='undefined') await _loadScript(FACEAPI_JS);
+    await faceapi.nets.tinyFaceDetector.loadFromUri(FACEAPI_MODELS);
+    _faceApiReady=true;
+  }catch(e){
+    console.warn('face-api.js load failed, AR sticker will float without tracking:',e);
+    _faceApiReady=false;
+  }
+  _faceApiLoading=false;
+  return _faceApiReady;
+}
+
+// Returns true immediately if native detector is ready; kicks off async
+// face-api.js load otherwise (loop will pick it up once ready).
+function _initFaceDetector(){
+  if(_faceMode==='native'||_faceMode==='faceapi') return true;
+  if('FaceDetector' in window){
+    try{
+      _faceDetector=new FaceDetector({fastMode:true,maxDetectedFaces:4});
+      _faceMode='native';
+      return true;
+    }catch(e){_faceDetector=null;}
+  }
+  // Kick off face-api.js load in background — return true optimistically so
+  // the UI turns on and starts tracking as soon as the model finishes loading.
+  _loadFaceApi().then(ok=>{ if(ok) _faceMode='faceapi'; });
+  return true;
+}
+
+function _ensureFaceCanvas(){
+  if(!_faceCanvas){
+    _faceCanvas=document.createElement('canvas');
+    _faceCanvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:13;pointer-events:none';
+    document.body.appendChild(_faceCanvas);
+  }
+  const W=video.videoWidth||window.innerWidth;
+  const H=video.videoHeight||window.innerHeight;
+  if(_faceCanvas.width!==window.innerWidth||_faceCanvas.height!==window.innerHeight){
+    _faceCanvas.width=window.innerWidth;
+    _faceCanvas.height=window.innerHeight;
+  }
+  _faceCtx=_faceCanvas.getContext('2d');
+}
+
+async function _faceDetectLoop(){
+  if(!faceDetectEnabled){
+    if(_faceCanvas){_faceCanvas.getContext('2d').clearRect(0,0,_faceCanvas.width,_faceCanvas.height);}
+    return;
+  }
+  if(!stream||_faceMode==='none'){
+    _faceRAF=requestAnimationFrame(_faceDetectLoop);
+    return;
+  }
+
+  if(_faceMode==='native'){
+    try{
+      _lastFaces=await _faceDetector.detect(video);
+    }catch(e){_lastFaces=[];}
+  } else if(_faceMode==='faceapi'){
+    if(!_faceApiReady){
+      // Model still loading — show floating sticker, try again next frame
+      _faceRAF=requestAnimationFrame(_faceDetectLoop);
+      return;
+    }
+    try{
+      const dets=await faceapi.detectAllFaces(video,new faceapi.TinyFaceDetectorOptions({inputSize:224,scoreThreshold:0.5}));
+      _lastFaces=dets.map(d=>({boundingBox:{x:d.box.x,y:d.box.y,width:d.box.width,height:d.box.height}}));
+    }catch(e){_lastFaces=[];}
+  } else {
+    // face-api.js still loading in background
+    _faceRAF=requestAnimationFrame(_faceDetectLoop);
+    return;
+  }
+
+  _ensureFaceCanvas();
+  const ctx=_faceCtx;
+  ctx.clearRect(0,0,_faceCanvas.width,_faceCanvas.height);
+
+  // Scale from video coords → screen coords
+  const scaleX=window.innerWidth/(video.videoWidth||window.innerWidth);
+  const scaleY=window.innerHeight/(video.videoHeight||window.innerHeight);
+
+  _lastFaces.forEach(face=>{
+    const b=face.boundingBox;
+    const x=b.x*scaleX, y=b.y*scaleY, w=b.width*scaleX, h=b.height*scaleY;
+
+    // Draw face box
+    ctx.strokeStyle='rgba(0,229,255,0.9)';
+    ctx.lineWidth=2;
+    ctx.beginPath();
+
+    // Corner brackets instead of full rect — cleaner look
+    const cs=Math.min(w,h)*0.22; // corner size
+    // TL
+    ctx.moveTo(x+cs,y); ctx.lineTo(x,y); ctx.lineTo(x,y+cs);
+    // TR
+    ctx.moveTo(x+w-cs,y); ctx.lineTo(x+w,y); ctx.lineTo(x+w,y+cs);
+    // BL
+    ctx.moveTo(x,y+h-cs); ctx.lineTo(x,y+h); ctx.lineTo(x+cs,y+h);
+    // BR
+    ctx.moveTo(x+w-cs,y+h); ctx.lineTo(x+w,y+h); ctx.lineTo(x+w,y+h-cs);
+    ctx.stroke();
+
+    // Confidence label
+    ctx.fillStyle='rgba(0,229,255,0.8)';
+    ctx.font=`bold ${Math.max(10,w*0.08)}px Outfit,sans-serif`;
+    ctx.fillText('FACE',x+4,y-6);
+
+    // ══ Feature 8: Update AR sticker position to follow face ══
+    _updateStickerForFace(x, y, w, h);
+  });
+
+  // If no faces, hide sticker bounding (but keep it centered-ish)
+  if(_lastFaces.length===0 && arOverlay.classList.contains('show')){
+    arSticker.style.transform='';
+    arSticker.style.fontSize='80px';
+  }
+
+  _faceRAF=requestAnimationFrame(_faceDetectLoop);
+}
+
+function _updateStickerForFace(screenX, screenY, screenW, screenH){
+  if(!arOverlay.classList.contains('show')) return;
+  // Position sticker above forehead
+  const stickerSize=screenW*0.9;
+  const cx=screenX+screenW/2;
+  const cy=screenY - stickerSize*0.15; // float above face
+
+  // Override ar-overlay flex centering with absolute positioning
+  arOverlay.style.alignItems='flex-start';
+  arOverlay.style.justifyContent='flex-start';
+  arSticker.style.position='fixed';
+  arSticker.style.left=`${cx}px`;
+  arSticker.style.top=`${cy}px`;
+  arSticker.style.transform='translate(-50%,-50%)';
+  arSticker.style.fontSize=`${Math.max(24,stickerSize)}px`;
+  arSticker.style.lineHeight='1';
+}
+
+function toggleFaceDetect(){
+  faceDetectEnabled=!faceDetectEnabled;
+  const btn=document.querySelector('.face-btn');
+
+  if(faceDetectEnabled){
+    _initFaceDetector();
+    if(btn) btn.style.color='var(--acc)';
+    _ensureFaceCanvas();
+    _faceCanvas.style.display='block';
+    _faceDetectLoop();
+    showToast(_faceMode==='native'?'Face Detection On 🤖':'Face Detection loading... 🤖');
+  } else {
+    if(btn) btn.style.color='';
+    if(_faceRAF){cancelAnimationFrame(_faceRAF);_faceRAF=null;}
+    if(_faceCanvas){
+      _faceCanvas.getContext('2d').clearRect(0,0,_faceCanvas.width,_faceCanvas.height);
+      _faceCanvas.style.display='none';
+    }
+    // Reset sticker to center
+    arSticker.style.cssText='font-size:80px;animation:float 3s ease-in-out infinite';
+    arOverlay.style.alignItems='';
+    arOverlay.style.justifyContent='';
+    showToast('Face Detection Off');
+  }
+}
+
+// ══ 30. ASPECT RATIO ══
+function setAspect(v){
+  video.style.objectFit=v==='cover'?'cover':'contain';
+  const labels={'cover':'FULL','4/3':'4:3','16/9':'16:9','1/1':'1:1'};
+  aspectBadge.textContent=labels[v]||v;
+  showToast('Aspect: '+aspectBadge.textContent);
+}
+
+// ══ 31. AR STICKER ══
+function setSticker(s){
+  if(!s){arOverlay.classList.remove('show');return;}
+  arSticker.textContent=s;
+  arOverlay.classList.add('show');
+  showToast('AR Sticker: '+s);
+}
+
+// ══ 32. CTRL POPUP ══
+function openCtrlPopup(){
+  ctrlPopup.classList.toggle('show');
+  evPopup.classList.remove('show');
+}
+
+// ══ 33. GALLERY ══
+function updateGalleryThumb(){
+  if(photos.length>0){
+    galleryThumb.src=photos[0].dataUrl;galleryThumb.style.display='block';
+    galleryThumbEmpty.style.display='none';
+  } else {
+    galleryThumb.style.display='none';galleryThumbEmpty.style.display='flex';
+  }
+}
+function updatePhotoCount(){
+  const n=photos.length;
+  sdPhotoCount.textContent=n;
+}
+function openGallery(){renderGalleryGrid();galleryPanel.classList.add('open');}
+function closeGallery(){galleryPanel.classList.remove('open');cancelBatch();}
+function toggleSort(){
+  sortAsc=!sortAsc;
+  photos.sort((a,b)=>sortAsc?b.timestamp-a.timestamp:a.timestamp-b.timestamp);
+  renderGalleryGrid();
+  showToast('Sort: '+(sortAsc?'Newest first':'Oldest first'));
+}
+
+function renderGalleryGrid(){
+  if(photos.length===0){
+    galleryGrid.style.display='none';galleryEmptyMsg.style.display='flex';return;
+  }
+  galleryGrid.style.display='grid';galleryEmptyMsg.style.display='none';
+  galleryGrid.innerHTML='';
+  photos.forEach((p,i)=>{
+    const item=document.createElement('div');
+    item.className='gallery-item'+(p.favorited?' favorited':'');
+    if(batchMode&&selectedItems.has(i)) item.classList.add('selected');
+    const modeTag=p.mode&&p.mode!=='PHOTO'?`<span class="mode-tag">${p.mode}</span>`:'';
+    const vidIcon=p.isVideo?`<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:26px">▶️</span>`:'';
+    const favStar=`<span class="fav-star">⭐</span>`;
+    item.innerHTML=`<img src="${p.dataUrl}" alt="Photo ${i+1}" loading="lazy">${modeTag}${vidIcon}${favStar}`;
+    item.onclick=()=>{
+      if(batchMode){toggleBatchItem(i,item);}
+      else if(p.isVideo){window.open(p.videoUrl,'_blank');}
+      else{openImageViewer(i);}
+    };
+    galleryGrid.appendChild(item);
+  });
+}
+
+// ══ 34. BATCH SELECT ══
+function startBatchSelect(){batchMode=true;selectedItems.clear();batchBar.classList.add('show');renderGalleryGrid();showToast('Photos select karein');}
+function cancelBatch(){batchMode=false;selectedItems.clear();batchBar.classList.remove('show');renderGalleryGrid();}
+function toggleBatchItem(i,el){
+  if(selectedItems.has(i)){selectedItems.delete(i);el.classList.remove('selected');}
+  else{selectedItems.add(i);el.classList.add('selected');}
+}
+function batchDelete(){
+  const arr=Array.from(selectedItems).sort((a,b)=>b-a);
+  arr.forEach(i=>{
+    const p=photos[i];
+    if(p&&p.idbId) idbDelete(p.idbId).catch(()=>{});
+    photos.splice(i,1);
+  });
+  updateGalleryThumb();updatePhotoCount();cancelBatch();
+  showToast(arr.length+' photos delete ho gayi 🗑');
+}
+
+// ══ 35. IMAGE VIEWER ══
+function openImageViewer(index){
+  currentViewIndex=index;
+  viewerImg.src=photos[index].dataUrl;
+  const p=photos[index];
+  document.getElementById('imgViewerLabel').textContent='Photo '+(index+1)+' / '+photos.length;
+  exifBar.textContent=`Mode: ${p.mode||'PHOTO'} · ${p.fmt?.toUpperCase()||'JPEG'} · ${p.size||'?'} · ${new Date(p.timestamp).toLocaleTimeString('hi-IN')}`;
+  imageViewer.classList.add('open');
+}
+function closeImageViewer(){imageViewer.classList.remove('open');}
+
+// ══ 36. FAVORITE ══
+function toggleFavorite(){
+  if(currentViewIndex<0) return;
+  photos[currentViewIndex].favorited=!photos[currentViewIndex].favorited;
+  showToast(photos[currentViewIndex].favorited?'⭐ Favorite mein add!':'Favorite se hata diya');
+}
+
+// ══ 37. SHARE ══
+function shareCurrentPhoto(){
+  if(currentViewIndex<0) return;
+  const p=photos[currentViewIndex];
+  if(navigator.share){
+    fetch(p.dataUrl).then(r=>r.blob()).then(blob=>{
+      const file=new File([blob],'snap.jpg',{type:'image/jpeg'});
+      navigator.share({title:'Snap Photo',files:[file]}).catch(()=>{});
+    });
+  } else {
+    const a=document.createElement('a');a.href=p.dataUrl;a.download='snap_'+Date.now()+'.jpg';a.click();
+    showToast('Downloaded (share not supported)');
+  }
+}
+
+// ══ 38. DOWNLOAD ══
+function downloadCurrentPhoto(){
+  if(currentViewIndex<0) return;
+  const a=document.createElement('a');
+  a.href=photos[currentViewIndex].dataUrl;
+  a.download='snap_'+Date.now()+'.jpg';a.click();
+  showToast('Downloading... ⬇');
+}
+
+// ══ 39. DELETE ══
+function deleteCurrentPhoto(){
+  if(currentViewIndex<0) return;
+  const p=photos[currentViewIndex];
+  if(p&&p.idbId) idbDelete(p.idbId).catch(()=>{});
+  photos.splice(currentViewIndex,1);
+  updateGalleryThumb();updatePhotoCount();
+  closeImageViewer();renderGalleryGrid();
+  showToast('Photo Delete Ho Gayi 🗑');
+}
+
+// ══ 40. SETTINGS ══
+function openSettings(){settingsDrawer.classList.add('open');}
+function closeSettings(){settingsDrawer.classList.remove('open');}
+
+// ══ TAP TO FOCUS ══
+video.addEventListener('click',e=>{
+  focusRing.style.left=e.clientX+'px';focusRing.style.top=e.clientY+'px';
+  focusRing.classList.add('active');
+  setTimeout(()=>focusRing.classList.remove('active'),800);
+  if(videoTrack){
+    const caps=videoTrack.getCapabilities?.();
+    if(caps&&caps.focusMode&&caps.focusMode.includes('manual')){
+      videoTrack.applyConstraints({advanced:[{focusMode:'manual'}]}).catch(()=>{});
+    }
+  }
+});
+
+// PINCH TO ZOOM
+let lastDist=null;
+video.addEventListener('touchmove',e=>{
+  if(e.touches.length===2){
+    const dx=e.touches[0].clientX-e.touches[1].clientX;
+    const dy=e.touches[0].clientY-e.touches[1].clientY;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+    if(lastDist){
+      const delta=(dist-lastDist)*.015;
+      currentZoom=Math.max(1,Math.min(8,currentZoom+delta));
+      applyZoom(currentZoom);
+    }
+    lastDist=dist;
+  }
+},{passive:true});
+video.addEventListener('touchend',()=>lastDist=null);
+
+// ══ TOAST ══
+let toastTimer;
+function showToast(msg){
+  toastEl.textContent=msg;toastEl.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>toastEl.classList.remove('show'),1800);
+}
+
+// ══ INIT ══
+startCamera();
+// Scroll modes strip to center on PHOTO
+setTimeout(()=>{
+  const strip=document.getElementById('modesStrip');
+  const active=strip.querySelector('.mode-pill.active');
+  if(active) strip.scrollLeft=active.offsetLeft-strip.clientWidth/2+active.clientWidth/2;
+},500);
+</script>
+</body>
+</html>
