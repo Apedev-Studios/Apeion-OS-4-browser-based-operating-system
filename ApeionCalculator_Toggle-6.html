@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apeion Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Cormorant+Garamond:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --rose:#c2577a;--blush:#f0c4d4;--petal:#fae4ec;--sage:#8aad8a;
+  --cream:#fdf6f0;--gold:#c9955c;--deep:#3a1f2e;--lavender:#b39bc8;
+  --dark:#1a0a14;--mid:#2d1020;--glass:rgba(255,255,255,0.07);
+  --glow:rgba(194,87,122,0.4);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+
+/* Smooth dark ⇄ light crossfade via the native View Transitions API (cheap, GPU-only, no per-element jank) */
+::view-transition-old(root),::view-transition-new(root){
+  animation-duration:.55s;
+  animation-timing-function:ease-in-out;
+}
+
+body{
+  font-family:'Cormorant Garamond',serif;
+  background:var(--dark);
+  min-height:100vh;
+  overflow-x:hidden;
+  cursor:default;
+}
+
+/* ── Animated BG ── */
+.bg{position:fixed;inset:0;z-index:0;overflow:hidden}
+.bg-gradient{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 20% 20%,rgba(194,87,122,0.15) 0%,transparent 60%),
+             radial-gradient(ellipse 60% 50% at 80% 80%,rgba(179,155,200,0.12) 0%,transparent 60%),
+             radial-gradient(ellipse 40% 40% at 50% 50%,rgba(201,149,92,0.06) 0%,transparent 70%),
+             linear-gradient(135deg,#1a0a14 0%,#0f0a18 50%,#0a0f14 100%);
+}
+.bg-gradient-light{
+  position:absolute;inset:0;opacity:0;
+  background:
+    radial-gradient(ellipse 55% 45% at 6% 4%,rgba(232,137,63,.26) 0%,transparent 62%),
+    radial-gradient(ellipse 48% 42% at 94% 6%,rgba(63,127,209,.22) 0%,transparent 62%),
+    radial-gradient(ellipse 48% 46% at 4% 96%,rgba(76,175,125,.22) 0%,transparent 62%),
+    radial-gradient(ellipse 55% 46% at 96% 94%,rgba(155,127,212,.24) 0%,transparent 62%),
+    radial-gradient(ellipse 60% 50% at 50% 48%,rgba(214,112,143,.05) 0%,transparent 70%),
+    linear-gradient(135deg,#fdf8f0 0%,#faf2e6 50%,#fdf6ee 100%);
+}
+.bg-gradient-light::after{
+  content:'';position:absolute;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+  opacity:.5;mix-blend-mode:multiply;pointer-events:none;
+}
+#stars-container{position:absolute;inset:0}
+.star{position:absolute;border-radius:50%;background:white;animation:twinkle linear infinite}
+@keyframes twinkle{0%,100%{opacity:.1;transform:scale(1)}50%{opacity:.6;transform:scale(1.3)}}
+
+/* Floating flower petals */
+.fp{position:fixed;border-radius:50% 10% 50% 10%;opacity:0;pointer-events:none;z-index:0;animation:fp-fall linear infinite}
+@keyframes fp-fall{0%{opacity:0;transform:translateY(-30px) rotate(0deg)}15%{opacity:.4}85%{opacity:.2}100%{opacity:0;transform:translateY(100vh) rotate(400deg) translateX(50px)}}
+
+
+/* SVG Corner flowers */
+.corner-flower{position:fixed;pointer-events:none;z-index:1;opacity:.18}
+.cf-tl{top:-30px;left:-30px;width:240px;animation:sway 9s ease-in-out infinite}
+.cf-tr{top:-20px;right:-30px;width:200px;animation:sway 11s ease-in-out infinite reverse}
+.cf-bl{bottom:-30px;left:-20px;width:200px;animation:sway 8s ease-in-out infinite 1.5s}
+.cf-br{bottom:-20px;right:-20px;width:180px;animation:sway 10s ease-in-out infinite 3s reverse}
+@keyframes sway{0%,100%{transform:rotate(0) scale(1)}33%{transform:rotate(4deg) scale(1.04)}66%{transform:rotate(-3deg) scale(.97)}}
+
+/* ── App Layout ── */
+.app{
+  position:relative;z-index:2;
+  max-width:820px;margin:0 auto;
+  padding:28px 16px 50px;
+  display:flex;flex-direction:column;gap:22px;
+}
+
+/* ── Header ── */
+header{text-align:center;animation:fade-down .8s ease-out both}
+@keyframes fade-down{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+.logo-row{display:flex;justify-content:center;align-items:center;gap:14px;margin-bottom:8px}
+.logo-title{font-family:'Playfair Display',serif;font-size:clamp(1.9rem,5vw,3.2rem);font-weight:400;color:#fff;letter-spacing:.04em;line-height:1}
+.logo-title span{color:var(--rose);font-style:italic}
+.logo-sub{font-size:.78rem;color:var(--rose);letter-spacing:.28em;text-transform:uppercase;font-weight:300;margin-top:4px;opacity:.8}
+.divider{display:flex;align-items:center;gap:10px;margin:10px auto;max-width:300px}
+.dline{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(194,87,122,.5),transparent)}
+
+/* ── Mode Tabs ── */
+.mode-tabs{
+  display:flex;gap:6px;justify-content:center;flex-wrap:wrap;
+  animation:fade-up .7s ease-out .2s both;
+}
+@keyframes fade-up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.tab{
+  padding:8px 18px;border-radius:30px;border:1.5px solid rgba(194,87,122,.25);
+  background:var(--glass);backdrop-filter:blur(10px);
+  color:rgba(255,255,255,.55);font-family:'Cormorant Garamond',serif;
+  font-size:.85rem;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;
+  transition:all .22s ease;font-weight:500;
+}
+.tab:hover{border-color:var(--rose);color:var(--blush);background:rgba(194,87,122,.1)}
+.tab.active{background:linear-gradient(135deg,var(--rose),#e07aa0);border-color:transparent;color:white;box-shadow:0 4px 20px var(--glow)}
+
+/* ── Main Calculator Card ── */
+.calc-card{
+  background:rgba(255,255,255,.045);
+  border:1.5px solid rgba(194,87,122,.2);
+  border-radius:28px;
+  backdrop-filter:blur(20px);
+  box-shadow:0 20px 60px rgba(0,0,0,.4),0 0 0 1px rgba(255,255,255,.04),inset 0 1px 0 rgba(255,255,255,.08);
+  overflow:hidden;
+  animation:fade-up .8s ease-out .3s both;
+}
+
+/* ── Display ── */
+.display{
+  background:linear-gradient(135deg,rgba(26,10,20,.8),rgba(15,8,24,.9));
+  padding:24px 28px 20px;
+  border-bottom:1px solid rgba(194,87,122,.15);
+  position:relative;overflow:hidden;
+  min-height:130px;
+}
+.display::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 60% 80% at 90% 10%,rgba(194,87,122,.08),transparent);
+  pointer-events:none;
+}
+.display-history{
+  font-family:'JetBrains Mono',monospace;font-size:.78rem;
+  color:rgba(255,255,255,.3);min-height:22px;text-align:right;
+  letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  margin-bottom:8px;
+}
+.display-expr{
+  font-family:'JetBrains Mono',monospace;font-size:1rem;
+  color:rgba(240,196,212,.7);text-align:right;
+  min-height:24px;word-break:break-all;letter-spacing:.02em;
+  line-height:1.4;
+}
+.display-result{
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(1.6rem,4vw,2.6rem);font-weight:300;
+  color:#fff;text-align:right;margin-top:6px;
+  letter-spacing:-.02em;line-height:1;
+  text-shadow:0 0 30px rgba(194,87,122,.3);
+  transition:all .2s ease;word-break:break-all;
+}
+.display-result.calculating{color:var(--rose);animation:pulse .6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── AI Answer Panel ── */
+.ai-panel{
+  background:rgba(194,87,122,.06);
+  border-bottom:1px solid rgba(194,87,122,.12);
+  padding:16px 24px;display:none;
+}
+.ai-panel.show{display:block;animation:slide-in .4s ease-out}
+@keyframes slide-in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.ai-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:var(--rose);margin-bottom:8px;display:flex;align-items:center;gap:6px;font-weight:500}
+.ai-content{font-size:.92rem;color:rgba(255,255,255,.8);line-height:1.7;font-family:'Cormorant Garamond',serif;font-weight:400}
+.ai-content strong{color:var(--blush)}
+.ai-content code{font-family:'JetBrains Mono',monospace;font-size:.82rem;background:rgba(194,87,122,.15);padding:2px 6px;border-radius:4px;color:var(--blush)}
+
+/* ── Button Grid ── */
+.btn-grid{
+  display:grid;padding:16px;gap:8px;
+}
+.btn-grid.standard{grid-template-columns:repeat(5,1fr)}
+.btn-grid.scientific{grid-template-columns:repeat(6,1fr)}
+.btn-grid.ai-mode{grid-template-columns:1fr}
+
+/* ── Buttons ── */
+.btn{
+  border:none;border-radius:14px;cursor:pointer;
+  font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:500;
+  padding:16px 8px;letter-spacing:.03em;
+  transition:all .15s ease;position:relative;overflow:hidden;
+  user-select:none;
+}
+.btn::after{content:'';position:absolute;inset:0;background:white;opacity:0;border-radius:14px;transition:opacity .15s}
+.btn:active::after{opacity:.08}
+.btn:active{transform:scale(.95)}
+
+.btn-num{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9);border:1px solid rgba(255,255,255,.08);font-size:1.4rem;font-weight:600}
+.btn-num:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.15);transform:translateY(-1px)}
+
+.btn-op{background:rgba(194,87,122,.15);color:var(--blush);border:1px solid rgba(194,87,122,.2);font-size:1.4rem;font-weight:600}
+.btn-op:hover{background:rgba(194,87,122,.25);transform:translateY(-1px);box-shadow:0 4px 16px rgba(194,87,122,.2)}
+
+.btn-eq{
+  background:linear-gradient(135deg,var(--rose),#e07aa0);
+  color:white;border:none;font-size:1.6rem;font-weight:600;
+  box-shadow:0 4px 20px var(--glow);
+}
+.btn-eq:hover{transform:translateY(-2px);box-shadow:0 8px 28px var(--glow)}
+
+.btn-clear{background:rgba(255,100,100,.12);color:#ff9090;border:1px solid rgba(255,100,100,.2);font-size:1.3rem;font-weight:600}
+.btn-clear:hover{background:rgba(255,100,100,.22);transform:translateY(-1px)}
+
+.btn-sci{background:rgba(179,155,200,.1);color:var(--lavender);border:1px solid rgba(179,155,200,.15);font-size:.82rem}
+.btn-sci:hover{background:rgba(179,155,200,.18);transform:translateY(-1px)}
+
+.btn-gold{background:rgba(201,149,92,.12);color:#e8c07a;border:1px solid rgba(201,149,92,.2);font-size:.85rem}
+.btn-gold:hover{background:rgba(201,149,92,.22);transform:translateY(-1px)}
+
+.btn-ai{
+  background:linear-gradient(135deg,rgba(194,87,122,.2),rgba(179,155,200,.2));
+  color:var(--blush);border:1.5px solid rgba(194,87,122,.3);
+  font-size:.95rem;padding:18px;letter-spacing:.06em;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+}
+.btn-ai:hover{background:linear-gradient(135deg,rgba(194,87,122,.35),rgba(179,155,200,.3));transform:translateY(-2px);box-shadow:0 6px 24px rgba(194,87,122,.25)}
+
+.btn-span2{grid-column:span 2}
+.btn-span3{grid-column:span 3}
+.btn-span6{grid-column:span 6}
+.btn-span5{grid-column:span 5}
+
+/* ── AI Question Input ── */
+.ai-input-section{padding:16px;display:none}
+.ai-input-section.show{display:block}
+.ai-question-box{
+  width:100%;background:rgba(255,255,255,.05);
+  border:1.5px solid rgba(194,87,122,.25);border-radius:16px;
+  color:white;font-family:'Cormorant Garamond',serif;font-size:1rem;
+  padding:16px 18px;resize:none;outline:none;
+  transition:border-color .2s;line-height:1.6;
+  min-height:90px;
+}
+.ai-question-box:focus{border-color:var(--rose);box-shadow:0 0 0 3px rgba(194,87,122,.1)}
+.ai-question-box::placeholder{color:rgba(255,255,255,.25);font-style:italic}
+.ai-submit-row{display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
+.ai-submit-btn{
+  flex:1;padding:13px 20px;
+  background:linear-gradient(135deg,var(--rose),#e07aa0);
+  color:white;border:none;border-radius:13px;
+  font-family:'Cormorant Garamond',serif;font-size:.95rem;font-weight:500;
+  cursor:pointer;letter-spacing:.06em;
+  transition:all .22s;box-shadow:0 4px 16px var(--glow);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.ai-submit-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px var(--glow)}
+.ai-submit-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+.quick-questions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.qq{
+  padding:6px 14px;border-radius:20px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(194,87,122,.2);
+  color:rgba(255,255,255,.5);font-size:.75rem;cursor:pointer;
+  transition:all .18s;font-family:'Cormorant Garamond',serif;letter-spacing:.04em;
+}
+.qq:hover{background:rgba(194,87,122,.15);color:var(--blush);border-color:var(--rose)}
+
+/* ── Converter Section ── */
+.converter-section{padding:16px;display:none}
+.converter-section.show{display:block}
+.conv-grid{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:12px}
+.conv-input-wrap{position:relative}
+.conv-input{
+  width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(194,87,122,.2);
+  border-radius:13px;color:white;font-family:'JetBrains Mono',monospace;
+  font-size:1.1rem;padding:14px 16px;outline:none;transition:border-color .2s;
+}
+.conv-input:focus{border-color:var(--rose)}
+.conv-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.15em;color:var(--rose);margin-bottom:5px;font-weight:500}
+.conv-arrow{font-size:1.4rem;color:var(--rose);text-align:center}
+.conv-select{
+  width:100%;background:rgba(255,255,255,.06);border:1.5px solid rgba(194,87,122,.2);
+  border-radius:13px;color:rgba(255,255,255,.8);font-family:'Cormorant Garamond',serif;
+  font-size:.9rem;padding:10px 14px;outline:none;cursor:pointer;
+  transition:border-color .2s;margin-top:4px;
+  -webkit-appearance:none;
+}
+.conv-select:focus{border-color:var(--rose)}
+.conv-select option{background:#1a0a14;color:white}
+.conv-type-btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.conv-type-btn{
+  padding:7px 14px;border-radius:20px;border:1px solid rgba(194,87,122,.2);
+  background:rgba(255,255,255,.04);color:rgba(255,255,255,.5);
+  font-family:'Cormorant Garamond',serif;font-size:.78rem;cursor:pointer;
+  transition:all .18s;letter-spacing:.08em;
+}
+.conv-type-btn:hover{border-color:var(--rose);color:var(--blush)}
+.conv-type-btn.active{background:rgba(194,87,122,.2);border-color:var(--rose);color:var(--blush)}
+
+/* ── History Panel ── */
+.history-panel{
+  border-top:1px solid rgba(194,87,122,.12);
+  padding:12px 16px;max-height:160px;overflow-y:auto;
+  scrollbar-width:thin;scrollbar-color:var(--rose) transparent;
+}
+.history-panel::-webkit-scrollbar{width:4px}
+.history-panel::-webkit-scrollbar-thumb{background:var(--rose);border-radius:2px}
+.history-title{font-size:.68rem;text-transform:uppercase;letter-spacing:.2em;color:rgba(194,87,122,.6);margin-bottom:8px;font-weight:500}
+.history-item{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:6px 10px;border-radius:8px;cursor:pointer;
+  transition:background .15s;font-family:'JetBrains Mono',monospace;
+}
+.history-item:hover{background:rgba(255,255,255,.05)}
+.hi-expr{font-size:.78rem;color:rgba(255,255,255,.4)}
+.hi-result{font-size:.88rem;color:var(--blush)}
+.no-history{font-size:.82rem;color:rgba(255,255,255,.2);font-style:italic;text-align:center;padding:8px}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(194,87,122,.3);border-radius:3px}
+
+@media(max-width:520px){
+  .btn-grid.scientific{grid-template-columns:repeat(4,1fr)}
+  .btn-grid.standard{grid-template-columns:repeat(4,1fr)}
+  .btn{padding:14px 6px;font-size:.88rem}
+  .btn-num{font-size:1.25rem}
+  .btn-op{font-size:1.25rem}
+  .btn-eq{font-size:1.4rem}
+  .btn-clear{font-size:1.15rem}
+}
+
+/* ════════════════════════════════════════════════════════════════
+   THEME TOGGLE BUTTON (moon ⇄ sun, fixed top-right, small)
+   ════════════════════════════════════════════════════════════════ */
+.theme-toggle-btn{
+  position:fixed;top:16px;right:16px;z-index:200;
+  width:38px;height:38px;border-radius:50%;
+  border:1.5px solid rgba(194,87,122,.25);
+  background:rgba(255,255,255,.07);backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .25s ease;
+  box-shadow:0 4px 14px rgba(0,0,0,.3);
+}
+.theme-toggle-btn:hover{transform:translateY(-2px) scale(1.06);border-color:var(--rose)}
+.theme-toggle-btn:active{transform:scale(.92)}
+.theme-toggle-btn .icon-sun{display:none}
+.theme-toggle-btn .icon-moon{display:block}
+.logo-icon-light,.divider-icon-light{display:none}
+
+/* ════════════════════════════════════════════════════════════════
+   LIGHT WATERCOLOR THEME — activated via body.light-mode
+   ════════════════════════════════════════════════════════════════ */
+body.light-mode{background:#fdf8f0}
+
+body.light-mode .theme-toggle-btn{background:rgba(255,255,255,.65);border-color:rgba(91,70,54,.18);box-shadow:0 4px 14px rgba(91,70,54,.15)}
+body.light-mode .theme-toggle-btn .icon-moon{display:none}
+body.light-mode .theme-toggle-btn .icon-sun{display:block}
+
+body.light-mode .bg-gradient{opacity:0}
+body.light-mode .bg-gradient-light{opacity:1}
+body.light-mode .star{background:rgba(91,70,54,.16)}
+
+/* corner flowers recolored to the four watercolor quadrant tones */
+body.light-mode .cf-tl g{fill:#e8893f}
+body.light-mode .cf-tl circle{fill:#d4a24c}
+body.light-mode .cf-tl line{stroke:#4caf7d}
+body.light-mode .cf-tl>ellipse{fill:#4caf7d}
+body.light-mode .cf-tr g{fill:#8fb8ea}
+body.light-mode .cf-tr circle{fill:#d6708f}
+body.light-mode .cf-bl path{fill:#5cb88a}
+body.light-mode .cf-bl line{stroke:#4caf7d}
+body.light-mode .cf-bl ellipse{fill:#4caf7d}
+body.light-mode .cf-br g{stroke:#c4b2e8}
+body.light-mode .cf-br circle{fill:#9b7fd4}
+
+/* header */
+body.light-mode .logo-title{color:#5b4636}
+body.light-mode .logo-title span{color:#d6708f}
+body.light-mode .logo-sub{color:#d6708f;opacity:.85}
+body.light-mode .dline{background:linear-gradient(90deg,transparent,rgba(91,70,54,.25),transparent)}
+body.light-mode .logo-icon-dark,body.light-mode .divider-icon-dark{display:none}
+body.light-mode .logo-icon-light,body.light-mode .divider-icon-light{display:inline-flex}
+body.light-mode .logo-flourish g{fill:#9b7fd4}
+body.light-mode .logo-flourish circle{fill:#d6708f}
+
+/* tabs */
+body.light-mode .tab{border-color:rgba(91,70,54,.15);background:rgba(255,255,255,.6);color:#8a7363}
+body.light-mode .tab:hover{border-color:#d6708f;color:#d6708f;background:rgba(214,112,143,.1)}
+body.light-mode .tab.active{background:linear-gradient(135deg,#d6708f,#e8a3b8);color:#fff;box-shadow:0 4px 18px rgba(214,112,143,.35)}
+
+/* calc card */
+body.light-mode .calc-card{background:rgba(255,255,255,.55);border-color:rgba(91,70,54,.1);box-shadow:0 20px 50px rgba(91,70,54,.12),0 0 0 1px rgba(255,255,255,.5),inset 0 1px 0 rgba(255,255,255,.7)}
+
+/* display */
+body.light-mode .display{background:linear-gradient(135deg,rgba(255,255,255,.75),rgba(253,248,240,.9));border-color:rgba(91,70,54,.1)}
+body.light-mode .display::before{background:radial-gradient(ellipse 60% 80% at 90% 10%,rgba(214,112,143,.1),transparent)}
+body.light-mode .display-history{color:rgba(91,70,54,.42)}
+body.light-mode .display-expr{color:rgba(214,112,143,.8)}
+body.light-mode .display-result{color:#5b4636;text-shadow:0 1px 1px rgba(91,70,54,.08)}
+body.light-mode .display-result.calculating{color:#d6708f}
+
+/* AI panel */
+body.light-mode .ai-panel{background:rgba(155,127,212,.08);border-color:rgba(155,127,212,.15)}
+body.light-mode .ai-label{color:#9b7fd4}
+body.light-mode .ai-content{color:#5b4636}
+body.light-mode .ai-content strong{color:#d6708f}
+body.light-mode .ai-content code{background:rgba(155,127,212,.15);color:#6a4f96}
+body.light-mode .ai-content span[style*="rgba(255,255,255"]{color:rgba(91,70,54,.5) !important}
+body.light-mode .ai-content span[style*="#ff8080"]{color:#c0392b !important}
+
+/* number & operator buttons — operators get the icon's four watercolor colors */
+body.light-mode .btn-num{background:rgba(255,255,255,.8);color:#5b4636;border-color:rgba(91,70,54,.08)}
+body.light-mode .btn-num:hover{background:#fff;border-color:rgba(91,70,54,.16)}
+body.light-mode .btn-op{font-size:1.4rem}
+body.light-mode .btn-add{background:linear-gradient(160deg,rgba(232,137,63,.92),rgba(232,137,63,.7));color:#fff;border-color:rgba(196,108,42,.4);text-shadow:0 1px 2px rgba(120,60,10,.25)}
+body.light-mode .btn-add:hover{background:linear-gradient(160deg,rgba(232,137,63,.92),rgba(232,137,63,.7));transform:translateY(-1px);box-shadow:0 6px 18px rgba(232,137,63,.4)}
+body.light-mode .btn-sub{background:linear-gradient(160deg,rgba(63,127,209,.92),rgba(63,127,209,.7));color:#fff;border-color:rgba(40,95,170,.4);text-shadow:0 1px 2px rgba(20,50,110,.25)}
+body.light-mode .btn-sub:hover{background:linear-gradient(160deg,rgba(63,127,209,.92),rgba(63,127,209,.7));transform:translateY(-1px);box-shadow:0 6px 18px rgba(63,127,209,.4)}
+body.light-mode .btn-mul{background:linear-gradient(160deg,rgba(76,175,125,.92),rgba(76,175,125,.7));color:#fff;border-color:rgba(45,140,90,.4);text-shadow:0 1px 2px rgba(15,80,45,.25)}
+body.light-mode .btn-mul:hover{background:linear-gradient(160deg,rgba(76,175,125,.92),rgba(76,175,125,.7));transform:translateY(-1px);box-shadow:0 6px 18px rgba(76,175,125,.4)}
+body.light-mode .btn-div{background:linear-gradient(160deg,rgba(155,127,212,.92),rgba(155,127,212,.7));color:#fff;border-color:rgba(120,90,180,.4);text-shadow:0 1px 2px rgba(70,40,120,.25)}
+body.light-mode .btn-div:hover{background:linear-gradient(160deg,rgba(155,127,212,.92),rgba(155,127,212,.7));transform:translateY(-1px);box-shadow:0 6px 18px rgba(155,127,212,.4)}
+
+body.light-mode .btn-eq{background:linear-gradient(135deg,#d6708f,#e8a3b8);box-shadow:0 4px 18px rgba(214,112,143,.35);text-shadow:0 1px 2px rgba(120,40,60,.25)}
+body.light-mode .btn-eq:hover{box-shadow:0 8px 24px rgba(214,112,143,.4)}
+body.light-mode .btn-clear{background:linear-gradient(160deg,rgba(226,103,79,.85),rgba(226,103,79,.62));color:#fff;border-color:rgba(190,70,50,.4)}
+body.light-mode .btn-clear:hover{background:linear-gradient(160deg,rgba(226,103,79,.85),rgba(226,103,79,.62));box-shadow:0 6px 16px rgba(226,103,79,.35)}
+body.light-mode .btn-sci{background:rgba(63,127,209,.12);color:#2f5fa0;border-color:rgba(63,127,209,.25)}
+body.light-mode .btn-sci:hover{background:rgba(63,127,209,.2)}
+body.light-mode .btn-gold{background:rgba(212,162,76,.16);color:#9c7530;border-color:rgba(212,162,76,.32)}
+body.light-mode .btn-gold:hover{background:rgba(212,162,76,.26)}
+body.light-mode .btn-ai{background:linear-gradient(135deg,rgba(155,127,212,.18),rgba(214,112,143,.18));color:#7a5a9e;border-color:rgba(155,127,212,.35)}
+body.light-mode .btn-ai:hover{background:linear-gradient(135deg,rgba(155,127,212,.3),rgba(214,112,143,.26));box-shadow:0 6px 22px rgba(155,127,212,.25)}
+
+/* AI input section */
+body.light-mode .ai-question-box{background:rgba(255,255,255,.65);border-color:rgba(155,127,212,.28);color:#5b4636}
+body.light-mode .ai-question-box:focus{border-color:#9b7fd4;box-shadow:0 0 0 3px rgba(155,127,212,.14)}
+body.light-mode .ai-question-box::placeholder{color:#b9a999}
+body.light-mode .ai-submit-btn{background:linear-gradient(135deg,#d6708f,#e8a3b8);box-shadow:0 4px 14px rgba(214,112,143,.35)}
+body.light-mode .ai-submit-btn:hover{box-shadow:0 8px 22px rgba(214,112,143,.4)}
+body.light-mode .qq{background:rgba(255,255,255,.55);border-color:rgba(155,127,212,.22);color:#8a7363}
+body.light-mode .qq:hover{background:rgba(155,127,212,.15);color:#9b7fd4;border-color:#9b7fd4}
+
+/* converter */
+body.light-mode .conv-input{background:rgba(255,255,255,.7);border-color:rgba(91,70,54,.16);color:#5b4636}
+body.light-mode .conv-input:focus{border-color:#d6708f}
+body.light-mode .conv-label{color:#d6708f}
+body.light-mode .conv-arrow{color:#d6708f}
+body.light-mode .conv-select{background:rgba(255,255,255,.7);border-color:rgba(91,70,54,.16);color:#8a7363}
+body.light-mode .conv-select:focus{border-color:#d6708f}
+body.light-mode .conv-select option{background:#fdf8f0;color:#5b4636}
+body.light-mode .conv-type-btn{background:rgba(255,255,255,.5);border-color:rgba(91,70,54,.16);color:#8a7363}
+body.light-mode .conv-type-btn:hover{border-color:#d6708f;color:#d6708f}
+body.light-mode .conv-type-btn.active{background:rgba(214,112,143,.18);border-color:#d6708f;color:#d6708f}
+
+/* history */
+body.light-mode .history-panel{border-color:rgba(91,70,54,.1);scrollbar-color:#d6708f transparent}
+body.light-mode .history-panel::-webkit-scrollbar-thumb{background:#d6708f}
+body.light-mode .history-title{color:rgba(214,112,143,.75)}
+body.light-mode .history-item:hover{background:rgba(91,70,54,.06)}
+body.light-mode .hi-expr{color:#b9a999}
+body.light-mode .hi-result{color:#d6708f}
+body.light-mode .no-history{color:#b9a999}
+body.light-mode ::-webkit-scrollbar-thumb{background:rgba(214,112,143,.35)}
+</style>
+</head>
+<body>
+
+<!-- ☀️/🌙 Theme Toggle -->
+<button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light / dark mode" aria-label="Toggle theme">
+  <svg class="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" fill="#e8c07a"/></svg>
+  <svg class="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="5" fill="#e8893f"/><g stroke="#e8893f" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="6.3" y2="6.3"/><line x1="17.7" y1="17.7" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="6.3" y2="17.7"/><line x1="17.7" y1="6.3" x2="19.8" y2="4.2"/></g></svg>
+</button>
+
+<!-- Background -->
+<div class="bg"><div class="bg-gradient"></div><div class="bg-gradient-light"></div><div id="stars-container"></div></div>
+
+<!-- Corner flowers -->
+<svg class="corner-flower cf-tl" viewBox="0 0 240 240" fill="none">
+  <g fill="#c2577a"><ellipse cx="120" cy="65" rx="24" ry="50" transform="rotate(0 120 120)"/><ellipse cx="120" cy="65" rx="24" ry="50" transform="rotate(45 120 120)"/><ellipse cx="120" cy="65" rx="24" ry="50" transform="rotate(90 120 120)"/><ellipse cx="120" cy="65" rx="24" ry="50" transform="rotate(135 120 120)"/><ellipse cx="120" cy="65" rx="24" ry="50" transform="rotate(180 120 120)"/><ellipse cx="120" cy="65" rx="24" ry="50" transform="rotate(225 120 120)"/><ellipse cx="120" cy="65" rx="24" ry="50" transform="rotate(270 120 120)"/><ellipse cx="120" cy="65" rx="24" ry="50" transform="rotate(315 120 120)"/></g>
+  <circle cx="120" cy="120" r="26" fill="#c9955c"/>
+  <line x1="120" y1="180" x2="120" y2="240" stroke="#8aad8a" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="96" cy="215" rx="20" ry="11" fill="#8aad8a" transform="rotate(-35 96 215)"/>
+</svg>
+<svg class="corner-flower cf-tr" viewBox="0 0 200 200" fill="none">
+  <g fill="#f0c4d4"><ellipse cx="100" cy="55" rx="18" ry="42" transform="rotate(0 100 100)"/><ellipse cx="100" cy="55" rx="18" ry="42" transform="rotate(60 100 100)"/><ellipse cx="100" cy="55" rx="18" ry="42" transform="rotate(120 100 100)"/><ellipse cx="100" cy="55" rx="18" ry="42" transform="rotate(180 100 100)"/><ellipse cx="100" cy="55" rx="18" ry="42" transform="rotate(240 100 100)"/><ellipse cx="100" cy="55" rx="18" ry="42" transform="rotate(300 100 100)"/></g>
+  <circle cx="100" cy="100" r="20" fill="#c2577a"/>
+</svg>
+<svg class="corner-flower cf-bl" viewBox="0 0 200 240" fill="none">
+  <path d="M100 130 Q75 105 70 80 Q70 55 100 45 Q130 55 130 80 Q125 105 100 130Z" fill="#b39bc8"/>
+  <line x1="100" y1="240" x2="100" y2="130" stroke="#8aad8a" stroke-width="4" stroke-linecap="round"/>
+  <ellipse cx="76" cy="180" rx="22" ry="11" fill="#8aad8a" transform="rotate(-35 76 180)"/>
+  <ellipse cx="124" cy="175" rx="22" ry="11" fill="#8aad8a" transform="rotate(35 124 175)"/>
+</svg>
+<svg class="corner-flower cf-br" viewBox="0 0 180 180" fill="none">
+  <g fill="white" opacity=".6" stroke="#f0c4d4" stroke-width=".8">
+    <ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(0 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(30 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(60 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(90 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(120 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(150 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(180 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(210 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(240 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(270 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(300 90 90)"/><ellipse cx="90" cy="50" rx="12" ry="32" transform="rotate(330 90 90)"/>
+  </g>
+  <circle cx="90" cy="90" r="22" fill="#c9955c"/>
+</svg>
+
+<div id="petals"></div>
+
+<div class="app">
+  <!-- Header -->
+  <header>
+    <div class="logo-row">
+      <span class="logo-icon-dark">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><g fill="#c2577a"><ellipse cx="16" cy="7" rx="4.5" ry="8" transform="rotate(0 16 16)"/><ellipse cx="16" cy="7" rx="4.5" ry="8" transform="rotate(60 16 16)"/><ellipse cx="16" cy="7" rx="4.5" ry="8" transform="rotate(120 16 16)"/><ellipse cx="16" cy="7" rx="4.5" ry="8" transform="rotate(180 16 16)"/><ellipse cx="16" cy="7" rx="4.5" ry="8" transform="rotate(240 16 16)"/><ellipse cx="16" cy="7" rx="4.5" ry="8" transform="rotate(300 16 16)"/></g><circle cx="16" cy="16" r="5.5" fill="#c9955c"/></svg>
+      </span>
+      <span class="logo-icon-light">
+        <svg width="34" height="34" viewBox="0 0 32 32" fill="none">
+          <rect x="1" y="1" width="30" height="30" rx="9" fill="#fdf8f0" stroke="rgba(91,70,54,.18)" stroke-width="1"/>
+          <rect x="3" y="3" width="12" height="12" rx="4" fill="#e8893f"/>
+          <rect x="17" y="3" width="12" height="12" rx="4" fill="#3f7fd1"/>
+          <rect x="3" y="17" width="12" height="12" rx="4" fill="#4caf7d"/>
+          <rect x="17" y="17" width="12" height="12" rx="4" fill="#9b7fd4"/>
+          <rect x="8" y="6.5" width="2" height="9" rx="1" fill="#fff"/>
+          <rect x="4.5" y="8" width="9" height="2" rx="1" fill="#fff"/>
+          <rect x="19.5" y="8" width="9" height="2" rx="1" fill="#fff"/>
+          <line x1="5" y1="19.5" x2="13" y2="27.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          <line x1="13" y1="19.5" x2="5" y2="27.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="23" cy="20.5" r="1.4" fill="#fff"/>
+          <rect x="19.5" y="22.5" width="7" height="2" rx="1" fill="#fff"/>
+          <circle cx="23" cy="26.5" r="1.4" fill="#fff"/>
+        </svg>
+      </span>
+      <h1 class="logo-title">Apeion <span>Calculator</span></h1>
+      <svg class="logo-flourish" width="26" height="26" viewBox="0 0 32 32" fill="none"><g fill="#b39bc8"><ellipse cx="16" cy="8" rx="4" ry="8" transform="rotate(0 16 16)"/><ellipse cx="16" cy="8" rx="4" ry="8" transform="rotate(72 16 16)"/><ellipse cx="16" cy="8" rx="4" ry="8" transform="rotate(144 16 16)"/><ellipse cx="16" cy="8" rx="4" ry="8" transform="rotate(216 16 16)"/><ellipse cx="16" cy="8" rx="4" ry="8" transform="rotate(288 16 16)"/></g><circle cx="16" cy="16" r="5" fill="#c2577a"/></svg>
+    </div>
+    <p class="logo-sub">✦ Duniya ka sabse powerful calculator ✦</p>
+    <div class="divider">
+      <div class="dline"></div>
+      <span class="divider-icon-dark"><svg width="12" height="12" viewBox="0 0 16 16"><g fill="#c2577a"><ellipse cx="8" cy="3" rx="2.5" ry="4" transform="rotate(0 8 8)"/><ellipse cx="8" cy="3" rx="2.5" ry="4" transform="rotate(90 8 8)"/><ellipse cx="8" cy="3" rx="2.5" ry="4" transform="rotate(180 8 8)"/><ellipse cx="8" cy="3" rx="2.5" ry="4" transform="rotate(270 8 8)"/></g><circle cx="8" cy="8" r="2.5" fill="#c9955c"/></svg></span>
+      <span class="divider-icon-light"><svg width="20" height="20" viewBox="0 0 20 20"><circle cx="6" cy="6" r="3.4" fill="#e8893f"/><circle cx="14" cy="6" r="3.4" fill="#3f7fd1"/><circle cx="6" cy="14" r="3.4" fill="#4caf7d"/><circle cx="14" cy="14" r="3.4" fill="#9b7fd4"/></svg></span>
+      <div class="dline"></div>
+    </div>
+  </header>
+
+  <!-- Mode Tabs -->
+  <div class="mode-tabs">
+    <div class="tab active" data-mode="standard">🌸 Standard</div>
+    <div class="tab" data-mode="scientific">🔬 Scientific</div>
+    <div class="tab" data-mode="convert">⚖️ Converter</div>
+    <div class="tab" data-mode="ai">🤖 AI Solve</div>
+  </div>
+
+  <!-- Calculator Card -->
+  <div class="calc-card">
+
+    <!-- Display -->
+    <div class="display">
+      <div class="display-history" id="disp-history"></div>
+      <div class="display-expr" id="disp-expr"></div>
+      <div class="display-result" id="disp-result">0</div>
+    </div>
+
+    <!-- AI Answer Panel -->
+    <div class="ai-panel" id="ai-panel">
+      <div class="ai-label">
+        <svg width="14" height="14" viewBox="0 0 32 32" fill="none"><g fill="#c2577a"><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(0 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(72 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(144 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(216 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(288 16 16)"/></g><circle cx="16" cy="16" r="5" fill="#c9955c"/></svg>
+        Apeion AI — Answer
+      </div>
+      <div class="ai-content" id="ai-content"></div>
+    </div>
+
+    <!-- Standard Buttons -->
+    <div class="btn-grid standard" id="grid-standard">
+      <button class="btn btn-sci" onclick="appendExpr('Math.PI')">π</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.E')">e</button>
+      <button class="btn btn-gold" onclick="appendExpr('%')">%</button>
+      <button class="btn btn-gold" onclick="appendExpr('**2')" title="Square">x²</button>
+      <button class="btn btn-clear" onclick="clearAll()">AC</button>
+
+      <button class="btn btn-num" onclick="appendExpr('7')">7</button>
+      <button class="btn btn-num" onclick="appendExpr('8')">8</button>
+      <button class="btn btn-num" onclick="appendExpr('9')">9</button>
+      <button class="btn btn-op btn-div" onclick="appendExpr('/')">÷</button>
+      <button class="btn btn-clear" onclick="backspace()">⌫</button>
+
+      <button class="btn btn-num" onclick="appendExpr('4')">4</button>
+      <button class="btn btn-num" onclick="appendExpr('5')">5</button>
+      <button class="btn btn-num" onclick="appendExpr('6')">6</button>
+      <button class="btn btn-op btn-mul" onclick="appendExpr('*')">×</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.sqrt(')">√</button>
+
+      <button class="btn btn-num" onclick="appendExpr('1')">1</button>
+      <button class="btn btn-num" onclick="appendExpr('2')">2</button>
+      <button class="btn btn-num" onclick="appendExpr('3')">3</button>
+      <button class="btn btn-op btn-sub" onclick="appendExpr('-')">−</button>
+      <button class="btn btn-sci" onclick="appendExpr('(')">( </button>
+
+      <button class="btn btn-num btn-span2" onclick="appendExpr('0')">0</button>
+      <button class="btn btn-num" onclick="appendExpr('.')">.</button>
+      <button class="btn btn-op btn-add" onclick="appendExpr('+')">+</button>
+      <button class="btn btn-sci" onclick="appendExpr(')')"> )</button>
+
+      <button class="btn btn-eq btn-span5" onclick="calculate()">=</button>
+    </div>
+
+    <!-- Scientific Buttons -->
+    <div class="btn-grid scientific" id="grid-scientific" style="display:none">
+      <button class="btn btn-sci" onclick="appendExpr('Math.sin(')">sin</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.cos(')">cos</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.tan(')">tan</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.log(')">ln</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.log10(')">log</button>
+      <button class="btn btn-clear" onclick="clearAll()">AC</button>
+
+      <button class="btn btn-sci" onclick="appendExpr('Math.asin(')">asin</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.acos(')">acos</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.atan(')">atan</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.exp(')">eˣ</button>
+      <button class="btn btn-sci" onclick="appendExpr('**')">xʸ</button>
+      <button class="btn btn-clear" onclick="backspace()">⌫</button>
+
+      <button class="btn btn-sci" onclick="appendExpr('Math.sinh(')">sinh</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.cosh(')">cosh</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.tanh(')">tanh</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.sqrt(')">√x</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.cbrt(')">∛x</button>
+      <button class="btn btn-sci" onclick="appendExpr('Math.abs(')">|x|</button>
+
+      <button class="btn btn-gold" onclick="appendExpr('Math.PI')">π</button>
+      <button class="btn btn-gold" onclick="appendExpr('Math.E')">e</button>
+      <button class="btn btn-gold" onclick="appendExpr('Math.PI*2')">2π</button>
+      <button class="btn btn-gold" onclick="appendExpr('%')">mod</button>
+      <button class="btn btn-gold" onclick="appendExpr('!')">n!</button>
+      <button class="btn btn-sci" onclick="appendExpr('(')">( )</button>
+
+      <button class="btn btn-num" onclick="appendExpr('7')">7</button>
+      <button class="btn btn-num" onclick="appendExpr('8')">8</button>
+      <button class="btn btn-num" onclick="appendExpr('9')">9</button>
+      <button class="btn btn-op btn-div" onclick="appendExpr('/')">÷</button>
+      <button class="btn btn-op btn-mul" onclick="appendExpr('*')">×</button>
+      <button class="btn btn-sci" onclick="appendExpr('**2')">x²</button>
+
+      <button class="btn btn-num" onclick="appendExpr('4')">4</button>
+      <button class="btn btn-num" onclick="appendExpr('5')">5</button>
+      <button class="btn btn-num" onclick="appendExpr('6')">6</button>
+      <button class="btn btn-op btn-sub" onclick="appendExpr('-')">−</button>
+      <button class="btn btn-op btn-add" onclick="appendExpr('+')">+</button>
+      <button class="btn btn-sci" onclick="appendExpr('**0.5')">√</button>
+
+      <button class="btn btn-num" onclick="appendExpr('1')">1</button>
+      <button class="btn btn-num" onclick="appendExpr('2')">2</button>
+      <button class="btn btn-num" onclick="appendExpr('3')">3</button>
+      <button class="btn btn-num" onclick="appendExpr('0')">0</button>
+      <button class="btn btn-num" onclick="appendExpr('.')">.</button>
+      <button class="btn btn-eq" onclick="calculate()">=</button>
+    </div>
+
+    <!-- Converter Section -->
+    <div class="converter-section" id="conv-section">
+      <div class="conv-type-btns" id="conv-types">
+        <div class="conv-type-btn active" data-type="length">📏 Length</div>
+        <div class="conv-type-btn" data-type="weight">⚖️ Weight</div>
+        <div class="conv-type-btn" data-type="temp">🌡️ Temp</div>
+        <div class="conv-type-btn" data-type="area">📐 Area</div>
+        <div class="conv-type-btn" data-type="speed">💨 Speed</div>
+        <div class="conv-type-btn" data-type="data">💾 Data</div>
+        <div class="conv-type-btn" data-type="time">⏰ Time</div>
+        <div class="conv-type-btn" data-type="energy">⚡ Energy</div>
+      </div>
+      <div class="conv-grid">
+        <div>
+          <div class="conv-label" id="from-label">From</div>
+          <input type="number" class="conv-input" id="conv-from" value="1" oninput="doConvert()"/>
+          <select class="conv-select" id="conv-from-unit" onchange="doConvert()"></select>
+        </div>
+        <div class="conv-arrow">⇄</div>
+        <div>
+          <div class="conv-label" id="to-label">To</div>
+          <input type="number" class="conv-input" id="conv-to" readonly/>
+          <select class="conv-select" id="conv-to-unit" onchange="doConvert()"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Mode Section -->
+    <div class="ai-input-section" id="ai-input-section">
+      <textarea class="ai-question-box" id="ai-question" placeholder="Yahan koi bhi mushkil sawaal likhein... 🌸&#10;Jaise: Prove Fermat's Last Theorem, Black hole ka radius, Riemann Hypothesis explain karo, DNA ka molecular weight..."></textarea>
+      <div class="ai-submit-row">
+        <button class="ai-submit-btn" id="ai-submit-btn" onclick="askAI()">
+          <svg width="16" height="16" viewBox="0 0 32 32" fill="none"><g fill="white"><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(0 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(72 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(144 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(216 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(288 16 16)"/></g><circle cx="16" cy="16" r="5" fill="#c9955c"/></svg>
+          Apeion AI se Puchho
+        </button>
+      </div>
+      <div class="quick-questions" id="quick-questions">
+        <div class="qq" onclick="setQ(this)">🌌 Universe ki age calculate karo</div>
+        <div class="qq" onclick="setQ(this)">🧮 Riemann Hypothesis explain karo</div>
+        <div class="qq" onclick="setQ(this)">⚛️ E=mc² se energy nikalo 1kg ke liye</div>
+        <div class="qq" onclick="setQ(this)">🌀 Black hole ka Schwarzschild radius</div>
+        <div class="qq" onclick="setQ(this)">📐 Pi ke 20 decimal places</div>
+        <div class="qq" onclick="setQ(this)">🧬 DNA ka molecular weight</div>
+        <div class="qq" onclick="setQ(this)">🚀 Escape velocity of Earth</div>
+        <div class="qq" onclick="setQ(this)">💹 Compound interest formula solve karo</div>
+        <div class="qq" onclick="setQ(this)">🎲 Monty Hall problem explain karo</div>
+        <div class="qq" onclick="setQ(this)">♾️ Infinity minus Infinity kya hota hai</div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="history-panel" id="history-panel">
+      <div class="history-title">✦ History</div>
+      <div id="history-list"><div class="no-history">No calculations yet 🌸</div></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Theme Toggle (uses native View Transitions API for a smooth, GPU-cheap crossfade) ──
+function toggleTheme(){
+  if(document.startViewTransition){
+    document.startViewTransition(()=>{document.body.classList.toggle('light-mode')});
+  } else {
+    document.body.classList.toggle('light-mode');
+  }
+}
+
+// ── State ──────────────────────────────────────────────────────────
+let expr='', history=[], currentMode='standard';
+
+// ── Display ───────────────────────────────────────────────────────
+function updateDisplay(result='', showExpr=true){
+  document.getElementById('disp-expr').textContent=showExpr?formatExpr(expr):'';
+  document.getElementById('disp-result').textContent=result||formatExpr(expr)||'0';
+}
+
+function formatExpr(e){
+  return e.replace(/Math\.sin\(/g,'sin(').replace(/Math\.cos\(/g,'cos(')
+    .replace(/Math\.tan\(/g,'tan(').replace(/Math\.log\(/g,'ln(')
+    .replace(/Math\.log10\(/g,'log(').replace(/Math\.sqrt\(/g,'√(')
+    .replace(/Math\.cbrt\(/g,'∛(').replace(/Math\.abs\(/g,'|')
+    .replace(/Math\.PI/g,'π').replace(/Math\.E(?![a-zA-Z])/g,'e')
+    .replace(/Math\.exp\(/g,'eˣ(').replace(/Math\.asin\(/g,'asin(')
+    .replace(/Math\.acos\(/g,'acos(').replace(/Math\.atan\(/g,'atan(')
+    .replace(/Math\.sinh\(/g,'sinh(').replace(/Math\.cosh\(/g,'cosh(')
+    .replace(/Math\.tanh\(/g,'tanh(').replace(/\*\*/g,'ⁿ').replace(/\*/g,'×').replace(/\//g,'÷');
+}
+
+function appendExpr(val){
+  if(val==='!'){
+    // Factorial
+    expr=`factorial(${expr})`;
+  } else {
+    expr+=val;
+  }
+  updateDisplay();
+  document.getElementById('ai-panel').classList.remove('show');
+}
+
+function clearAll(){expr='';document.getElementById('disp-history').textContent='';document.getElementById('disp-result').textContent='0';document.getElementById('disp-expr').textContent='';document.getElementById('ai-panel').classList.remove('show');}
+function backspace(){expr=expr.slice(0,-1);updateDisplay();}
+
+function factorial(n){
+  n=Math.round(n);
+  if(n<0)return NaN;
+  if(n===0||n===1)return 1;
+  if(n>170)return Infinity;
+  let r=1;for(let i=2;i<=n;i++)r*=i;return r;
+}
+
+function calculate(){
+  if(!expr)return;
+  try{
+    const safeExpr=expr.replace(/!/g,'');
+    const result=Function('Math','factorial',`"use strict"; return (${expr})`)(Math,factorial);
+    const formatted=formatNumber(result);
+    document.getElementById('disp-history').textContent=formatExpr(expr)+' =';
+    document.getElementById('disp-result').textContent=formatted;
+    document.getElementById('disp-expr').textContent='';
+    addHistory(expr,formatted);
+    expr='';
+  }catch(e){
+    document.getElementById('disp-result').textContent='Error ✦';
+  }
+}
+
+function formatNumber(n){
+  if(typeof n!=='number')return String(n);
+  if(!isFinite(n))return n===Infinity?'∞':'-∞';
+  if(Math.abs(n)>=1e15||( Math.abs(n)<1e-6&&n!==0))return n.toExponential(6);
+  const s=parseFloat(n.toPrecision(12));
+  return s.toLocaleString('en-IN',{maximumFractionDigits:10});
+}
+
+function addHistory(ex,res){
+  history.unshift({ex,res});if(history.length>20)history.pop();
+  renderHistory();
+}
+function renderHistory(){
+  const list=document.getElementById('history-list');
+  if(!history.length){list.innerHTML='<div class="no-history">No calculations yet 🌸</div>';return}
+  list.innerHTML=history.map(h=>`<div class="history-item" onclick="recallHistory('${h.res}')"><span class="hi-expr">${formatExpr(h.ex)}</span><span class="hi-result">${h.res}</span></div>`).join('');
+}
+function recallHistory(val){expr=val.replace(/,/g,'');updateDisplay();}
+
+// ── Keyboard ──────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(['ai','convert'].includes(currentMode))return;
+  if(e.key>='0'&&e.key<='9')appendExpr(e.key);
+  else if(['+','-','*','/','%','(',')','.'].includes(e.key))appendExpr(e.key);
+  else if(e.key==='Enter')calculate();
+  else if(e.key==='Backspace')backspace();
+  else if(e.key==='Escape')clearAll();
+});
+
+// ── Modes ─────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    currentMode=tab.dataset.mode;
+    document.getElementById('grid-standard').style.display=currentMode==='standard'?'grid':'none';
+    document.getElementById('grid-scientific').style.display=currentMode==='scientific'?'grid':'none';
+    document.getElementById('conv-section').classList.toggle('show',currentMode==='convert');
+    document.getElementById('ai-input-section').classList.toggle('show',currentMode==='ai');
+    if(currentMode==='convert')loadConvUnits('length');
+    document.getElementById('ai-panel').classList.remove('show');
+  });
+});
+
+// ── Converter ─────────────────────────────────────────────────────
+const CONV_DATA={
+  length:{label:'Length',units:{Meter:1,Kilometer:1e-3,Centimeter:100,Millimeter:1e3,Mile:0.000621371,Yard:1.09361,Foot:3.28084,Inch:39.3701,Nautical_Mile:0.000539957,Light_Year:1.057e-16,Parsec:3.24e-17,Angstrom:1e10}},
+  weight:{label:'Weight',units:{Kilogram:1,Gram:1e3,Milligram:1e6,Pound:2.20462,Ounce:35.274,Ton_Metric:0.001,Ton_US:0.00110231,Stone:0.157473,Carat:5e3,Atomic_Mass_Unit:6.022e26}},
+  temp:{label:'Temperature',units:{Celsius:0,Fahrenheit:1,Kelvin:2,Rankine:3}},
+  area:{label:'Area',units:{'sq_Meter':1,'sq_Kilometer':1e-6,'sq_Centimeter':1e4,'Hectare':1e-4,'Acre':0.000247105,'sq_Mile':3.861e-7,'sq_Foot':10.7639,'sq_Inch':1550,'sq_Yard':1.19599}},
+  speed:{label:'Speed',units:{'m/s':1,'km/h':3.6,'mph':2.23694,'Knot':1.94384,'Mach':0.00293858,'ft/s':3.28084,'Speed_of_Light':3.336e-9}},
+  data:{label:'Data',units:{Byte:1,Kilobyte:0.001,Megabyte:1e-6,Gigabyte:1e-9,Terabyte:1e-12,Petabyte:1e-15,Bit:8,Kibibyte:1/1024,Mebibyte:1/1048576}},
+  time:{label:'Time',units:{Second:1,Minute:1/60,Hour:1/3600,Day:1/86400,Week:1/604800,Month:1/2592000,Year:1/31536000,Millisecond:1e3,Microsecond:1e6,Nanosecond:1e9,Decade:1/315360000,Century:1/3153600000}},
+  energy:{label:'Energy',units:{Joule:1,Kilojoule:0.001,Calorie:0.239006,Kilocalorie:2.39e-4,Watt_Hour:2.778e-4,Kilowatt_Hour:2.778e-7,Electronvolt:6.242e18,BTU:9.478e-4,Erg:1e7,Foot_Pound:0.737562}},
+};
+
+document.querySelectorAll('.conv-type-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.conv-type-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');loadConvUnits(btn.dataset.type);
+  });
+});
+
+function loadConvUnits(type){
+  const data=CONV_DATA[type];
+  const fu=document.getElementById('conv-from-unit'),tu=document.getElementById('conv-to-unit');
+  const units=Object.keys(data.units);
+  fu.innerHTML=units.map((u,i)=>`<option value="${u}"${i===0?' selected':''}>${u.replace(/_/g,' ')}</option>`).join('');
+  tu.innerHTML=units.map((u,i)=>`<option value="${u}"${i===1?' selected':''}>${u.replace(/_/g,' ')}</option>`).join('');
+  doConvert();
+}
+
+function doConvert(){
+  const type=document.querySelector('.conv-type-btn.active').dataset.type;
+  const fromVal=parseFloat(document.getElementById('conv-from').value)||0;
+  const fromUnit=document.getElementById('conv-from-unit').value;
+  const toUnit=document.getElementById('conv-to-unit').value;
+  const data=CONV_DATA[type];
+  let result;
+  if(type==='temp'){
+    // Special temperature conversion
+    const c={'Celsius':v=>v,'Fahrenheit':v=>(v-32)*5/9,'Kelvin':v=>v-273.15,'Rankine':v=>(v-491.67)*5/9};
+    const tc={'Celsius':v=>v,'Fahrenheit':v=>v*9/5+32,'Kelvin':v=>v+273.15,'Rankine':v=>(v+273.15)*9/5};
+    const celsius=c[fromUnit](fromVal);
+    result=tc[toUnit](celsius);
+  } else {
+    const fromRate=data.units[fromUnit],toRate=data.units[toUnit];
+    result=(fromVal/fromRate)*toRate;
+  }
+  document.getElementById('conv-to').value=parseFloat(result.toPrecision(8));
+}
+
+// ── AI Mode ───────────────────────────────────────────────────────
+function setQ(el){
+  const txt=el.textContent.replace(/^[^\s]+\s/,'');
+  document.getElementById('ai-question').value=txt;
+}
+
+async function askAI(){
+  const q=document.getElementById('ai-question').value.trim();
+  if(!q)return;
+
+  const btn=document.getElementById('ai-submit-btn');
+  btn.disabled=true;btn.textContent='🌸 Soch raha hoon...';
+
+  const panel=document.getElementById('ai-panel');
+  const content=document.getElementById('ai-content');
+  panel.classList.add('show');
+  content.innerHTML='<span style="color:rgba(255,255,255,.4);font-style:italic;animation:pulse .8s infinite">Apeion AI calculate kar raha hai... 🌸</span>';
+
+  // Switch back to show display area
+  document.getElementById('grid-standard').style.display='none';
+  document.getElementById('grid-scientific').style.display='none';
+  document.getElementById('ai-input-section').classList.add('show');
+
+  try{
+    const res=await fetch("https://ocxrttqxhghovlyjudrk.supabase.co/functions/v1/apeion-calculator-ai",{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json"
+      },
+      body:JSON.stringify({ question:q })
+    });
+    const data=await res.json();
+    if(!res.ok)throw new Error(data?.error||"Server error");
+    const text=data.answer;
+    content.innerHTML=text
+      .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+      .replace(/`([^`]+)`/g,'<code>$1</code>')
+      .replace(/\n\n/g,'<br><br>')
+      .replace(/\n/g,'<br>');
+  }catch(e){
+    content.innerHTML=`<span style="color:#ff8080">Kuch error aaya: ${e.message||'Please try again!'} 🌸</span>`;
+  }
+
+  btn.disabled=false;
+  btn.innerHTML=`<svg width="16" height="16" viewBox="0 0 32 32" fill="none"><g fill="white"><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(0 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(72 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(144 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(216 16 16)"/><ellipse cx="16" cy="7" rx="4" ry="7" transform="rotate(288 16 16)"/></g><circle cx="16" cy="16" r="5" fill="#c9955c"/></svg> Apeion AI se Puchho`;
+}
+
+// ── Stars ─────────────────────────────────────────────────────────
+const sc=document.getElementById('stars-container');
+for(let i=0;i<80;i++){
+  const s=document.createElement('div');s.className='star';
+  const sz=Math.random()*2+.5;
+  s.style.cssText=`width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;animation-duration:${2+Math.random()*4}s;animation-delay:${Math.random()*4}s`;
+  sc.appendChild(s);
+}
+
+// ── Petals ────────────────────────────────────────────────────────
+function makePetal(){
+  const c=document.getElementById('petals'),p=document.createElement('div');p.className='fp';
+  const cols=['#f0c4d4','#c2577a','#b39bc8','#fae4ec','#e8c07a'];
+  p.style.background=cols[Math.floor(Math.random()*cols.length)];
+  p.style.left=Math.random()*100+'vw';
+  const dur=10+Math.random()*14;
+  p.style.animationDuration=dur+'s';p.style.animationDelay=(Math.random()*5)+'s';
+  p.style.width=(6+Math.random()*9)+'px';p.style.height=(9+Math.random()*13)+'px';
+  c.appendChild(p);setTimeout(()=>p.remove(),(dur+6)*1000);
+}
+setInterval(makePetal,1600);for(let i=0;i<6;i++)setTimeout(makePetal,i*500);
+
+// ── Init ──────────────────────────────────────────────────────────
+loadConvUnits('length');
+</script>
+</body>
+</html>
