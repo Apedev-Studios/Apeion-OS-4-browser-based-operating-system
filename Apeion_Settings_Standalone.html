@@ -1,0 +1,3750 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Apeion OS — Settings (Standalone)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   BASE RESET
+══════════════════════════════════════════ */
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;width:100%;font-family:"Outfit",sans-serif;background:#0a0a10;user-select:none;overscroll-behavior:none;margin:0;}
+body{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:0;}
+
+/* ══════════════════════════════════════════
+   DEMO PHONE FRAME
+   (Standalone shell — asli Apeion OS mein iski
+   zaroorat nahi, yeh sirf yahan preview ke liye hai)
+══════════════════════════════════════════ */
+#phoneFrame{
+  width:100%;max-width:none;height:100%;max-height:none;aspect-ratio:auto;
+  background:#111;border-radius:0;position:relative;overflow:hidden;
+  box-shadow:none;
+  /* transform creates a containing block so position:fixed panels (Settings,
+     Dev Options, PIN modals — copied verbatim from the OS) stay inside the frame */
+  transform:translateZ(0);
+}
+#launcherScreen{
+  position:absolute;inset:0;background:linear-gradient(160deg,#1a1030,#2a1a4a 60%,#3a1a3a);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+}
+#launcherScreen .launch-title{color:rgba(255,255,255,.9);font-size:15px;font-weight:600;letter-spacing:.02em;}
+#launcherScreen .launch-sub{color:rgba(255,255,255,.4);font-size:11.5px;text-align:center;padding:0 30px;line-height:1.5;}
+.settings-launch-icon{
+  width:74px;height:74px;border-radius:22px;
+  background:linear-gradient(135deg,#555,#222);
+  display:flex;align-items:center;justify-content:center;font-size:34px;
+  box-shadow:0 8px 24px rgba(0,0,0,.4);cursor:pointer;transition:transform .15s;
+}
+.settings-launch-icon:active{transform:scale(.92);}
+
+/* ══════════════════════════════════════════
+   SETTINGS APP — extracted verbatim from Apeion OS 3
+══════════════════════════════════════════ */
+#appBar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));background:rgba(5,5,16,.94);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+#appBarTitle{color:white;font-size:14.5px;font-weight:500;flex:1;text-align:center;letter-spacing:.02em;}
+.aw-btn{width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.1);color:white;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;}
+.aw-btn:active{background:rgba(255,255,255,.24);transform:scale(.9);}
+#appFrame{flex:1;border:none;width:100%;background:#fff;}
+
+/* Stub screen — per-app themed, not generic */
+#stubContent{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;position:relative;overflow:hidden;}
+#stubBg{position:absolute;inset:0;opacity:.22;filter:blur(60px);z-index:0;transition:background .4s;}
+#stubInner{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:14px;}
+#stubIconWrap{width:96px;height:96px;border-radius:28px;display:flex;align-items:center;justify-content:center;font-size:48px;box-shadow:0 16px 48px rgba(0,0,0,.5),0 4px 12px rgba(0,0,0,.3);position:relative;overflow:hidden;}
+#stubIconWrap::after{content:"";position:absolute;inset:0;background:linear-gradient(148deg,rgba(255,255,255,.28) 0%,transparent 52%);pointer-events:none;}
+#stubName{font-size:22px;font-weight:600;color:white;text-shadow:0 2px 12px rgba(0,0,0,.5);}
+#stubMsg{font-size:13.5px;color:rgba(255,255,255,.42);letter-spacing:.06em;}
+.stub-coming-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:50px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.65);font-size:12px;font-weight:500;letter-spacing:.08em;margin-top:4px;}
+
+
+/* ══════════════════════════════
+   BROWSER CHOOSER SHEET
+══════════════════════════════ */
+
+/* ══════════════════════════════
+   APE SEARCH OVERLAY
+══════════════════════════════ */
+#apeSearchOverlay{
+  position:fixed;inset:0;z-index:200;
+  display:flex;flex-direction:column;
+  background:#07071a;
+  transform:translateY(100%);
+  transition:transform .32s cubic-bezier(.22,1,.36,1);
+}
+#apeSearchOverlay.open{transform:translateY(0);}
+#apeSearchBar{
+  display:flex;align-items:center;gap:10px;
+  padding:max(14px,env(safe-area-inset-top)) 14px 10px;
+  background:rgba(10,10,28,0.97);
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  flex-shrink:0;
+}
+#apeSearchInput{
+  flex:1;background:rgba(255,255,255,0.09);
+  border:1.5px solid rgba(255,255,255,0.14);
+  border-radius:50px;padding:10px 18px;
+  color:white;font-size:15px;font-family:"Outfit",sans-serif;
+  outline:none;caret-color:#c8506a;
+}
+#apeSearchInput:focus{border-color:rgba(200,80,106,0.6);background:rgba(255,255,255,0.12);}
+#apeSearchInput::placeholder{color:rgba(255,255,255,0.35);}
+#apeSearchCloseBtn{
+  width:36px;height:36px;border-radius:50%;border:none;
+  background:rgba(255,255,255,0.1);color:white;
+  font-size:16px;cursor:pointer;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+}
+#apeSearchFrame{flex:1;border:none;width:100%;background:#fff;}
+#apeSearchEmpty{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:10px;color:rgba(255,255,255,0.28);
+  font-size:14px;text-align:center;padding:20px;
+}
+#apeSearchEmpty .se-icon{font-size:48px;margin-bottom:6px;}
+#apeSearchSuggestions{
+  display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px 4px;
+  flex-shrink:0;
+}
+.ase-chip{
+  padding:6px 14px;border-radius:50px;
+  background:rgba(200,80,106,0.18);border:1px solid rgba(200,80,106,0.35);
+  color:rgba(255,255,255,0.75);font-size:12.5px;cursor:pointer;
+  font-family:"Outfit",sans-serif;transition:all .15s;
+}
+.ase-chip:active{background:rgba(200,80,106,0.4);transform:scale(.93);}
+#apeSearchTip{
+  padding:6px 16px 10px;font-size:11px;
+  color:rgba(255,255,255,0.22);text-align:center;flex-shrink:0;
+  letter-spacing:.04em;
+}
+
+/* ══════════════════════════════
+   SETTINGS — Premium Warm Cream + Gold Glassmorphism
+══════════════════════════════ */
+#settingsApp{
+  position:fixed;inset:0;z-index:95;
+  background:linear-gradient(160deg,#fdf8f0 0%,#faf3e4 40%,#f7edd6 100%);
+  transform:translateY(100%);
+  transition:transform .34s cubic-bezier(.22,1,.36,1);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  -webkit-overflow-scrolling:touch;
+}
+#settingsApp.open{transform:translateY(0);}
+
+/* Decorative golden orbs */
+#settingsApp::before{
+  content:"";position:absolute;top:-80px;right:-60px;
+  width:260px;height:260px;border-radius:50%;
+  background:radial-gradient(circle,rgba(201,168,76,.22) 0%,rgba(201,168,76,.06) 60%,transparent 100%);
+  pointer-events:none;z-index:0;
+}
+#settingsApp::after{
+  content:"";position:absolute;bottom:60px;left:-80px;
+  width:220px;height:220px;border-radius:50%;
+  background:radial-gradient(circle,rgba(212,175,100,.18) 0%,rgba(255,220,150,.06) 60%,transparent 100%);
+  pointer-events:none;z-index:0;
+}
+
+.set-header{
+  display:flex;align-items:center;gap:12px;
+  padding:14px 18px;padding-top:max(14px,env(safe-area-inset-top));
+  background:rgba(255,252,242,.82);
+  backdrop-filter:blur(32px) saturate(1.6);
+  -webkit-backdrop-filter:blur(32px) saturate(1.6);
+  border-bottom:1px solid rgba(201,168,76,.28);
+  box-shadow:0 2px 20px rgba(180,140,60,.1),0 1px 0 rgba(255,255,255,.9) inset;
+  flex-shrink:0;position:relative;z-index:2;
+}
+.set-header h1{
+  font-size:19px;font-weight:700;
+  background:linear-gradient(135deg,#8a6500 0%,#c9a84c 50%,#a07820 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  letter-spacing:.01em;
+}
+
+.set-body{
+  padding:20px 14px 48px;
+  position:relative;z-index:1;
+}
+.set-body::-webkit-scrollbar{display:none;}
+
+.set-sec{margin-bottom:26px;}
+
+.set-sec-title{
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.22em;
+  color:rgba(160,120,30,.7);
+  margin-bottom:9px;padding-left:5px;
+  display:flex;align-items:center;gap:6px;
+}
+.set-sec-title::before{
+  content:"";display:inline-block;width:14px;height:1.5px;
+  background:linear-gradient(90deg,rgba(201,168,76,.8),rgba(201,168,76,.2));
+  border-radius:1px;
+}
+
+.set-card{
+  background:rgba(255,252,242,.72);
+  border:1px solid rgba(201,168,76,.28);
+  border-radius:22px;overflow:hidden;
+  backdrop-filter:blur(24px) saturate(1.4);
+  -webkit-backdrop-filter:blur(24px) saturate(1.4);
+  box-shadow:
+    0 4px 24px rgba(180,140,60,.1),
+    0 1px 0 rgba(255,255,255,.95) inset,
+    0 -1px 0 rgba(201,168,76,.08) inset;
+  position:relative;
+}
+.set-card::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.9) 30%,rgba(255,255,255,.9) 70%,transparent);
+  pointer-events:none;
+}
+
+.set-row{
+  display:flex;align-items:center;gap:13px;
+  padding:14px 16px;
+  border-bottom:1px solid rgba(201,168,76,.12);
+  cursor:pointer;
+  transition:background .14s,transform .12s;
+  position:relative;
+}
+.set-row:last-child{border-bottom:none;}
+.set-row:active{
+  background:rgba(201,168,76,.12);
+  transform:scale(.995);
+}
+
+.set-row-ico{
+  width:38px;height:38px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:19px;flex-shrink:0;
+  box-shadow:0 3px 10px rgba(0,0,0,.15),0 1px 0 rgba(255,255,255,.5) inset;
+  position:relative;overflow:hidden;
+}
+.set-row-ico::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(148deg,rgba(255,255,255,.3) 0%,transparent 55%);
+  pointer-events:none;
+}
+
+.sri-title{
+  font-size:14px;font-weight:600;
+  color:#3d2a00;
+  letter-spacing:.005em;
+}
+.sri-sub{
+  font-size:11.5px;
+  color:rgba(130,95,20,.58);
+  margin-top:2px;
+  font-weight:400;
+}
+.set-arrow{
+  color:rgba(160,120,30,.45);
+  font-size:18px;margin-left:auto;
+  font-weight:300;
+}
+
+/* Wallpaper section inside settings */
+.wp-gal-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:12px;border-radius:28px;
+  border:1.5px dashed rgba(201,168,76,.55);
+  background:rgba(255,248,220,.4);
+  color:#8a6500;font-family:"Outfit",sans-serif;
+  font-size:14px;font-weight:600;cursor:pointer;
+  margin-bottom:13px;transition:all .15s;
+  backdrop-filter:blur(8px);
+}
+.wp-gal-btn:active{background:rgba(201,168,76,.18);border-style:solid;transform:scale(.98);}
+
+.wp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px;}
+.wp-thumb{
+  aspect-ratio:.56;border-radius:14px;overflow:hidden;cursor:pointer;
+  border:3px solid transparent;
+  transition:all .25s cubic-bezier(.34,1.2,.64,1);
+  box-shadow:0 4px 16px rgba(0,0,0,.22);
+  position:relative;
+}
+.wp-thumb:active{transform:scale(.94);}
+.wp-thumb.sel{
+  border-color:#c9a84c;
+  box-shadow:0 0 0 2px rgba(201,168,76,.7),0 8px 24px rgba(201,168,76,.4);
+  transform:scale(1.04);
+}
+.wp-thumb-inner{
+  width:100%;height:100%;border-radius:11px;
+  position:relative;
+}
+.wp-thumb-inner::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(160deg,rgba(255,255,255,.18) 0%,transparent 50%);
+  border-radius:11px;pointer-events:none;
+}
+/* Wallpaper name label below thumb */
+.wp-thumb-label{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:4px 5px;
+  background:linear-gradient(0deg,rgba(0,0,0,.65),transparent);
+  color:white;font-size:8px;font-weight:600;
+  letter-spacing:.04em;text-align:center;
+  border-radius:0 0 11px 11px;
+  text-shadow:0 1px 3px rgba(0,0,0,.8);
+}
+
+.wp-apply{
+  width:100%;padding:14px;border-radius:28px;border:none;
+  background:linear-gradient(135deg,#c9a84c 0%,#e8c96a 40%,#b8911f 100%);
+  color:#3d2a00;font-family:"Outfit",sans-serif;
+  font-size:14.5px;font-weight:700;cursor:pointer;
+  box-shadow:0 5px 22px rgba(201,168,76,.45),0 1px 0 rgba(255,255,255,.4) inset;
+  transition:all .18s;letter-spacing:.02em;
+}
+.wp-apply:active{transform:scale(.97);box-shadow:0 2px 10px rgba(201,168,76,.3);}
+
+#panelOverlay{position:fixed;inset:0;z-index:88;background:transparent;display:none;}
+#panelOverlay.show{display:block;}
+
+/* Toast — always above notification panel */
+#osToast{position:fixed;top:62px;left:50%;transform:translateX(-50%) translateY(-20px);background:rgba(12,14,28,.92);color:white;padding:9px 22px;border-radius:28px;font-size:13px;z-index:250;opacity:0;transition:opacity .22s,transform .22s;pointer-events:none;backdrop-filter:blur(16px);white-space:nowrap;border:1px solid rgba(255,255,255,.1);box-shadow:0 4px 20px rgba(0,0,0,.4);}
+#osToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#torchOverlay{position:fixed;inset:0;z-index:999;background:white;opacity:0;pointer-events:none;transition:opacity .3s;}
+#torchOverlay.on{opacity:.95;}
+
+/* ══════════════════════════════
+   RIPPLE EFFECT
+══════════════════════════════ */
+.ripple-container{position:relative;overflow:hidden;}
+@keyframes rippleAnim{0%{transform:scale(0);opacity:.5;}100%{transform:scale(4);opacity:0;}}
+.ripple-wave{position:absolute;border-radius:50%;background:rgba(255,255,255,0.45);animation:rippleAnim .55s ease-out forwards;pointer-events:none;z-index:10;}
+
+/* ══════════════════════════════
+   ENHANCED DOCK
+══════════════════════════════ */
+.dock{
+  display:flex;justify-content:space-around;align-items:center;
+  margin:4px 12px 20px;padding:14px 12px;
+  background:rgba(18,20,38,0.65);
+  backdrop-filter:blur(48px) saturate(1.8);
+  -webkit-backdrop-filter:blur(48px) saturate(1.8);
+  border-radius:36px;
+  border:1px solid rgba(255,255,255,0.18);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,.45),
+    0 2px 0 rgba(255,255,255,.12) inset,
+    0 -1px 0 rgba(0,0,0,.3) inset;
+  flex-shrink:0;
+}
+.dock .app-icon-img{
+  box-shadow:0 8px 24px rgba(0,0,0,.5),0 2px 6px rgba(0,0,0,.3),
+    inset 0 1.5px 0 rgba(255,255,255,.4),
+    inset 0 -7px 12px rgba(0,0,0,.25),
+    inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.dock .app-icon:active .app-icon-img{
+  transform:scale(.82) translateY(2px);
+  box-shadow:0 2px 8px rgba(0,0,0,.3),inset 0 1.5px 0 rgba(255,255,255,.25),inset 0 -7px 12px rgba(0,0,0,.3);
+}
+
+/* ══════════════════════════════
+   ANIMATED PAGE DOTS
+══════════════════════════════ */
+.pdot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.3);transition:all .38s cubic-bezier(.34,1.56,.64,1);}
+.pdot.active{width:24px;border-radius:5px;background:rgba(255,255,255,.95);box-shadow:0 0 8px rgba(255,255,255,.6);}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 8px rgba(255,255,255,.6);}50%{box-shadow:0 0 16px rgba(255,255,255,.9),0 0 24px rgba(255,255,255,.4);}}
+.pdot.active{animation:dotPulse 2.2s ease-in-out infinite;}
+
+/* ══════════════════════════════
+   LOCK SCREEN BLUR TRANSITION
+══════════════════════════════ */
+#passScreen{
+  background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.04) 40%,rgba(0,0,0,.08));
+  backdrop-filter:blur(11px) saturate(1.5) brightness(1.04);
+  -webkit-backdrop-filter:blur(11px) saturate(1.5) brightness(1.04);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.35),inset 0 -1.5px 0 rgba(255,255,255,.08);
+}
+#passScreen.screen.hidden{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;}
+
+/* ══════════════════════════════
+   WEATHER WIDGET
+══════════════════════════════ */
+#weatherWidget{
+  margin:6px 0;flex-shrink:0;
+  background:rgba(255,255,255,0.12);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-radius:22px;
+  border:1px solid rgba(255,255,255,0.18);
+  padding:11px 16px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,.22),0 1px 0 rgba(255,255,255,.18) inset;
+  cursor:pointer;transition:all .18s;
+}
+#weatherWidget:active{transform:scale(.985);background:rgba(255,255,255,.18);}
+.ww-icon{font-size:30px;flex-shrink:0;filter:drop-shadow(0 2px 6px rgba(0,0,0,.3));}
+.ww-info{flex:1;}
+.ww-temp{font-size:22px;font-weight:300;color:white;line-height:1;letter-spacing:-0.5px;text-shadow:0 2px 8px rgba(0,0,0,.3);}
+.ww-desc{font-size:11px;color:rgba(255,255,255,.7);margin-top:2px;font-weight:400;letter-spacing:.03em;}
+.ww-city{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px;letter-spacing:.05em;}
+.ww-right{text-align:right;flex-shrink:0;}
+.ww-hi-lo{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;}
+.ww-humidity{font-size:10px;color:rgba(255,255,255,.45);margin-top:2px;}
+
+/* ══════════════════════════════
+   THEME SYSTEM
+══════════════════════════════ */
+body.theme-light{--text-on-wp:rgba(30,20,10,.9);--text-on-wp2:rgba(60,40,10,.7);}
+body.theme-light .app-icon-label{color:#1a1a2a;text-shadow:0 1px 4px rgba(255,255,255,.8);}
+body.theme-light .sb-time{color:#1a1a2a;}
+body.theme-light .dw-time{color:#1a1a2a;text-shadow:0 2px 12px rgba(0,0,0,.15);}
+body.theme-light .dw-date-top{color:rgba(30,20,10,.75);}
+body.theme-light .bottom-search{background:rgba(30,20,10,.18);border-color:rgba(30,20,10,.2);}
+body.theme-light .bottom-search span{color:rgba(30,20,10,.85);}
+body.theme-light .dock{background:rgba(255,252,240,.7);border-color:rgba(201,168,76,.3);}
+body.theme-light .top-search{background:rgba(255,255,255,.95);}
+
+body.theme-amoled #homeScreen{background:#000;}
+body.theme-amoled .dock{background:rgba(5,5,5,.92);border-color:rgba(255,255,255,.08);}
+body.theme-amoled .top-search{background:rgba(15,15,15,.95);}
+body.theme-amoled .top-search-text{color:rgba(255,255,255,.5);}
+body.theme-amoled #drawerBlurBg{background:rgba(0,0,0,.72);}
+body.theme-amoled #appDrawer .drawer-search{background:rgba(255,255,255,.06);}
+
+/* Theme toggle row in settings */
+.theme-row{display:flex;gap:8px;padding:12px 16px 14px;}
+.theme-chip{
+  flex:1;padding:10px 6px;border-radius:16px;border:2px solid transparent;
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  cursor:pointer;transition:all .2s cubic-bezier(.34,1.2,.64,1);
+  font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+}
+.theme-chip:active{transform:scale(.93);}
+.theme-chip-dot{width:28px;height:28px;border-radius:50%;box-shadow:0 3px 10px rgba(0,0,0,.25);}
+.theme-chip.sel{border-color:#c9a84c;box-shadow:0 0 0 3px rgba(201,168,76,.25);}
+
+/* Dynamic Wallpaper toggle in settings */
+.dw-toggle-row{
+  display:flex;align-items:center;gap:13px;
+  padding:14px 16px;border-bottom:1px solid rgba(201,168,76,.12);cursor:pointer;
+  transition:background .14s;
+}
+.dw-toggle-row:active{background:rgba(201,168,76,.12);}
+.dw-switch{
+  width:48px;height:28px;border-radius:14px;
+  background:rgba(180,140,60,.2);border:1.5px solid rgba(201,168,76,.3);
+  position:relative;transition:all .28s cubic-bezier(.34,1.2,.64,1);flex-shrink:0;
+}
+.dw-switch.on{background:linear-gradient(135deg,#c9a84c,#e8c96a);border-color:#c9a84c;box-shadow:0 0 12px rgba(201,168,76,.5);}
+.dw-switch-knob{
+  position:absolute;top:3px;left:3px;
+  width:20px;height:20px;border-radius:50%;
+  background:white;box-shadow:0 2px 6px rgba(0,0,0,.3);
+  transition:transform .28s cubic-bezier(.34,1.56,.64,1);
+}
+.dw-switch.on .dw-switch-knob{transform:translateX(20px);}
+
+/* App icon bounce on tap */
+@keyframes iconBounce{0%{transform:scale(1);}30%{transform:scale(.78);}60%{transform:scale(1.08);}100%{transform:scale(1);}}
+.app-icon.tapped .app-icon-img{animation:iconBounce .38s cubic-bezier(.34,1.56,.64,1);}
+
+/* Notif panel smooth transitions */
+#notifPanel{transition:transform .4s cubic-bezier(.22,1,.36,1),opacity .3s;}
+#notifPanel:not(.open){opacity:0;}
+#notifPanel.open{opacity:1;}
+
+/* Search bar expand animation */
+.top-search{transition:all .2s cubic-bezier(.34,1.2,.64,1);}
+.top-search:active{transform:scale(.985);background:rgba(240,240,248,.96);}
+/* ══════════════════════════════
+   DEVELOPER OPTIONS PANEL
+══════════════════════════════ */
+#devOptionsPanel{
+  position:fixed;inset:0;z-index:200;
+  background:linear-gradient(160deg,rgba(18,14,30,.97) 0%,rgba(10,8,20,.99) 100%);
+  display:flex;flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .35s cubic-bezier(.22,1,.36,1);
+  overflow:hidden;
+}
+#devOptionsPanel.open{transform:translateX(0);}
+
+.dev-header{
+  display:flex;align-items:center;gap:12px;
+  padding:max(14px,env(safe-area-inset-top)) 16px 12px;
+  background:rgba(255,60,60,.08);
+  border-bottom:1px solid rgba(255,60,60,.18);
+  flex-shrink:0;
+}
+.dev-header-ico{font-size:22px;}
+.dev-header-title{flex:1;color:#ff6b6b;font-size:17px;font-weight:700;letter-spacing:.01em;}
+.dev-header-badge{
+  padding:3px 10px;border-radius:20px;
+  background:rgba(255,60,60,.18);border:1px solid rgba(255,60,60,.35);
+  color:#ff9090;font-size:9px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;
+}
+.dev-close-btn{
+  width:34px;height:34px;border-radius:50%;
+  background:rgba(255,60,60,.12);border:1px solid rgba(255,60,60,.25);
+  color:#ff8080;font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.dev-close-btn:active{background:rgba(255,60,60,.3);transform:scale(.88);}
+
+.dev-warning{
+  margin:14px 16px 4px;padding:11px 14px;
+  background:rgba(255,140,0,.1);border:1px solid rgba(255,140,0,.28);
+  border-radius:14px;
+  display:flex;align-items:center;gap:10px;
+}
+.dev-warning-text{color:rgba(255,200,80,.85);font-size:11.5px;font-weight:500;line-height:1.4;}
+
+.dev-body{flex:1;overflow-y:auto;padding:12px 16px 40px;}
+.dev-body::-webkit-scrollbar{display:none;}
+
+.dev-section{margin-bottom:20px;}
+.dev-sec-title{
+  color:rgba(255,100,100,.55);font-size:10px;font-weight:800;
+  letter-spacing:.18em;text-transform:uppercase;
+  margin-bottom:8px;padding-left:2px;
+}
+.dev-card{
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;overflow:hidden;
+}
+.dev-row{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 16px;
+  border-bottom:1px solid rgba(255,255,255,.05);
+  cursor:pointer;transition:background .14s;
+}
+.dev-row:last-child{border-bottom:none;}
+.dev-row:active{background:rgba(255,255,255,.07);}
+.dev-row-ico{
+  width:38px;height:38px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.dev-row-text{flex:1;}
+.dev-row-title{color:rgba(255,255,255,.88);font-size:14px;font-weight:600;}
+.dev-row-sub{color:rgba(255,255,255,.38);font-size:11.5px;margin-top:2px;}
+.dev-switch{
+  width:46px;height:26px;border-radius:13px;
+  background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.15);
+  position:relative;transition:all .25s cubic-bezier(.34,1.2,.64,1);flex-shrink:0;
+}
+.dev-switch.on{background:linear-gradient(135deg,#ff4444,#cc2222);border-color:#ff4444;box-shadow:0 0 12px rgba(255,60,60,.4);}
+.dev-switch-knob{
+  position:absolute;top:3px;left:3px;
+  width:18px;height:18px;border-radius:50%;
+  background:white;box-shadow:0 2px 6px rgba(0,0,0,.4);
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1);
+}
+.dev-switch.on .dev-switch-knob{transform:translateX(20px);}
+
+/* Dev PIN modal */
+#devPinModal{
+  position:fixed;inset:0;z-index:210;
+  background:rgba(0,0,0,.78);
+  backdrop-filter:blur(24px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;padding:40px 30px;
+  opacity:0;pointer-events:none;
+  transition:opacity .25s;
+}
+#devPinModal.open{opacity:1;pointer-events:all;}
+.dev-pin-title{color:rgba(255,255,255,.9);font-size:18px;font-weight:600;text-align:center;}
+.dev-pin-sub{color:rgba(255,255,255,.45);font-size:13px;text-align:center;margin-top:-12px;}
+.dev-pin-dots{display:flex;gap:14px;}
+.dev-pin-dot{
+  width:14px;height:14px;border-radius:50%;
+  border:2px solid rgba(255,100,100,.5);
+  transition:all .18s cubic-bezier(.34,1.56,.64,1);
+}
+.dev-pin-dot.filled{background:#ff6b6b;border-color:#ff6b6b;transform:scale(1.15);box-shadow:0 0 10px rgba(255,60,60,.5);}
+.dev-pin-dot.error{background:#ff3333;border-color:#ff3333;animation:shake .4s ease;}
+.dev-pin-err{color:#ff9090;font-size:13px;opacity:0;transition:opacity .25s;min-height:18px;text-align:center;}
+.dev-pin-err.show{opacity:1;}
+.dev-numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:280px;}
+.dev-num-btn{
+  aspect-ratio:1;border-radius:50%;border:none;
+  background:rgba(255,255,255,.09);
+  backdrop-filter:blur(12px);
+  color:white;font-size:24px;font-family:"Outfit",sans-serif;font-weight:300;
+  cursor:pointer;transition:all .12s cubic-bezier(.34,1.56,.64,1);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border:1px solid rgba(255,255,255,.06);
+}
+.dev-num-btn:active{background:rgba(255,100,100,.3);transform:scale(.84);}
+.dev-num-btn .sub{font-size:7px;letter-spacing:.14em;color:rgba(255,255,255,.35);font-weight:500;}
+.dev-num-btn.del{background:rgba(255,255,255,.05);font-size:17px;}
+.dev-num-btn.zero{grid-column:2;}
+.dev-cancel-btn{
+  padding:12px 32px;border-radius:28px;border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);
+  font-family:"Outfit",sans-serif;font-size:14px;cursor:pointer;transition:all .15s;
+}
+.dev-cancel-btn:active{background:rgba(255,255,255,.14);}
+
+@keyframes cpCardIn{
+  from{opacity:0;transform:translateY(32px) scale(.95);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+@keyframes cpStepSlide{
+  from{opacity:0;transform:translateX(24px);}
+  to{opacity:1;transform:translateX(0);}
+}
+@keyframes cpGoldShimmer{
+  0%{background-position:200% center;}
+  100%{background-position:-200% center;}
+}
+@keyframes cpDotPop{
+  0%{transform:scale(1);}
+  45%{transform:scale(1.5);}
+  70%{transform:scale(.88);}
+  100%{transform:scale(1.1);}
+}
+@keyframes cpDotShake{
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-8px);}
+  40%{transform:translateX(8px);}
+  60%{transform:translateX(-5px);}
+  80%{transform:translateX(5px);}
+}
+@keyframes cpSuccessScale{
+  0%{transform:scale(.5);opacity:0;}
+  60%{transform:scale(1.15);}
+  100%{transform:scale(1);opacity:1;}
+}
+
+/* Modal backdrop */
+#changePinModal{
+  position:fixed;inset:0;z-index:900;
+  display:flex;align-items:center;justify-content:center;
+  padding:24px 20px;
+  opacity:0;pointer-events:none;
+  transition:opacity .28s ease;
+  overflow:hidden;
+}
+#changePinModal.open{
+  opacity:1;pointer-events:all;
+  animation:cpModalIn .28s ease both;
+}
+/* Cream-warm background */
+#changePinModal::before{
+  content:"";position:absolute;inset:0;z-index:0;
+  background:linear-gradient(160deg,rgba(253,249,242,.96) 0%,rgba(250,244,228,.97) 50%,rgba(245,236,206,.96) 100%);
+  backdrop-filter:blur(40px) saturate(1.4);
+  -webkit-backdrop-filter:blur(40px) saturate(1.4);
+}
+/* Decorative gold orbs */
+#changePinModal::after{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 40% at 15% 10%,rgba(201,168,76,.22) 0%,transparent 65%),
+    radial-gradient(ellipse 50% 35% at 88% 92%,rgba(201,168,76,.18) 0%,transparent 60%),
+    radial-gradient(ellipse 45% 30% at 55% 50%,rgba(255,245,200,.4) 0%,transparent 70%);
+}
+/* Main card */
+#changePinModal .cp-card{
+  position:relative;z-index:1;
+  width:100%;max-width:340px;
+  background:rgba(255,255,255,.78);
+  backdrop-filter:blur(32px) saturate(1.5);
+  -webkit-backdrop-filter:blur(32px) saturate(1.5);
+  border-radius:28px;
+  border:1px solid rgba(201,168,76,.28);
+  box-shadow:
+    0 24px 64px rgba(160,120,40,.18),
+    0 8px 20px rgba(0,0,0,.08),
+    0 1px 0 rgba(255,255,255,.95) inset,
+    0 -1px 0 rgba(201,168,76,.08) inset;
+  padding:0;
+  overflow:hidden;
+  animation:cpCardIn .4s cubic-bezier(.22,1,.36,1) both;
+}
+/* Gold shimmer top border */
+#changePinModal .cp-card::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2.5px;z-index:2;
+  background:linear-gradient(90deg,transparent 0%,#c9a84c 25%,#f0d070 50%,#c9a84c 75%,transparent 100%);
+  background-size:200% auto;
+  animation:cpGoldShimmer 3s linear infinite;
+}
+/* Card inner shine */
+#changePinModal .cp-card::after{
+  content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:linear-gradient(145deg,rgba(255,255,255,.55) 0%,transparent 45%);
+  border-radius:28px;
+}
+/* Card header section */
+.cp-header{
+  position:relative;z-index:1;
+  padding:28px 24px 0;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+.cp-icon{
+  width:62px;height:62px;border-radius:20px;
+  background:linear-gradient(145deg,rgba(201,168,76,.38),rgba(180,140,50,.28));
+  border:1.5px solid rgba(201,168,76,.45);
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  box-shadow:0 8px 24px rgba(180,140,60,.25),0 2px 6px rgba(0,0,0,.08),0 1px 0 rgba(255,255,255,.7) inset;
+  position:relative;
+}
+.cp-icon-ring{
+  position:absolute;inset:-7px;border-radius:27px;
+  border:1.5px solid rgba(201,168,76,.2);
+  animation:glowPulse 3s ease-in-out infinite;
+}
+.cp-title{
+  font-size:20px;font-weight:700;
+  background:linear-gradient(135deg,#6b4800 0%,#c9a84c 50%,#7a5400 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-align:center;letter-spacing:-.15px;
+}
+/* Step progress pills */
+.cp-steps{
+  display:flex;gap:7px;align-items:center;margin-top:2px;
+}
+.cp-step-pip{
+  width:7px;height:7px;border-radius:50%;
+  background:rgba(201,168,76,.22);border:1px solid rgba(201,168,76,.3);
+  transition:all .35s cubic-bezier(.34,1.4,.64,1);
+}
+.cp-step-pip.active{
+  width:22px;border-radius:4px;
+  background:linear-gradient(90deg,#c9a84c,#f0d070);
+  border-color:transparent;
+  box-shadow:0 0 10px rgba(201,168,76,.5);
+}
+.cp-step-pip.done{
+  background:linear-gradient(135deg,#5a9e6a,#3d8a50);
+  border-color:transparent;
+  box-shadow:0 0 8px rgba(80,160,100,.4);
+}
+/* Step label */
+.cp-step-label{
+  font-size:11.5px;font-weight:600;color:rgba(140,100,30,.52);
+  text-align:center;letter-spacing:.04em;margin-top:2px;
+}
+/* Divider */
+.cp-divider{
+  width:100%;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(201,168,76,.25) 30%,rgba(201,168,76,.25) 70%,transparent);
+  margin:18px 0 0;
+}
+/* PIN dots section */
+.cp-dots-section{
+  position:relative;z-index:1;
+  padding:20px 24px 0;
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+}
+.cp-dots{display:flex;gap:18px;}
+.cp-dot{
+  width:16px;height:16px;border-radius:50%;
+  border:2px solid rgba(201,168,76,.3);
+  background:rgba(255,248,220,.5);
+  transition:all .18s ease;position:relative;
+}
+.cp-dot.filled{
+  background:linear-gradient(145deg,#c9a84c,#e8c860);
+  border-color:#c9a84c;
+  box-shadow:0 0 12px rgba(201,168,76,.55),0 2px 5px rgba(0,0,0,.1);
+  animation:cpDotPop .28s cubic-bezier(.34,1.56,.64,1);
+}
+.cp-dot.error{
+  background:linear-gradient(145deg,#e85555,#cc2222) !important;
+  border-color:#e85555 !important;
+  box-shadow:0 0 12px rgba(230,60,60,.6) !important;
+}
+.cp-dot.success{
+  background:linear-gradient(145deg,#5ab96a,#3a9a4a) !important;
+  border-color:#4aaa5a !important;
+  box-shadow:0 0 12px rgba(80,180,100,.55) !important;
+}
+.cp-dots-row{
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  animation:cpStepSlide .32s cubic-bezier(.22,1,.36,1) both;
+}
+.cp-err{
+  font-size:12px;color:rgba(200,60,40,.8);
+  text-align:center;min-height:16px;opacity:0;transition:opacity .22s;
+  font-weight:500;letter-spacing:.02em;
+}
+.cp-err.show{opacity:1;}
+/* Numpad */
+.cp-numpad{
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:11px;width:100%;padding:16px 24px 0;
+}
+.cp-num-btn{
+  aspect-ratio:1;border-radius:50%;border:none;cursor:pointer;
+  background:rgba(255,248,220,.7);
+  border:1.5px solid rgba(201,168,76,.22);
+  color:rgba(80,55,10,.85);
+  font-size:23px;font-family:"Outfit",sans-serif;font-weight:300;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  box-shadow:0 4px 14px rgba(180,140,60,.12),0 1px 0 rgba(255,255,255,.9) inset;
+  transition:all .12s cubic-bezier(.34,1.56,.64,1);
+  position:relative;overflow:hidden;
+}
+.cp-num-btn::before{
+  content:"";position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle at 35% 28%,rgba(255,255,255,.65) 0%,transparent 60%);
+  pointer-events:none;
+}
+.cp-num-btn .sub{
+  font-size:7px;letter-spacing:.14em;font-weight:700;
+  color:rgba(140,100,30,.35);text-transform:uppercase;
+}
+.cp-num-btn:active{
+  background:rgba(255,235,160,.85);
+  border-color:rgba(201,168,76,.55);
+  transform:scale(.84);
+  box-shadow:0 0 0 3px rgba(201,168,76,.18),0 2px 8px rgba(180,140,60,.15);
+}
+.cp-num-btn.zero{grid-column:2;}
+.cp-num-btn.del{
+  background:rgba(255,235,230,.6);
+  border-color:rgba(220,100,80,.2);
+  color:rgba(180,70,50,.6);font-size:18px;
+}
+.cp-num-btn.del:active{background:rgba(255,210,200,.85);}
+/* Bottom action area */
+.cp-actions{
+  position:relative;z-index:1;
+  padding:18px 24px 24px;
+  display:flex;flex-direction:column;gap:10px;
+}
+/* OK / Confirm button — gold gradient */
+.cp-ok-btn{
+  width:100%;padding:14px;border-radius:50px;border:none;cursor:pointer;
+  font-size:15px;font-weight:700;font-family:"Outfit",sans-serif;letter-spacing:.04em;
+  background:linear-gradient(135deg,#c9a84c 0%,#e8c860 50%,#c9a84c 100%);
+  background-size:200% auto;
+  color:#3a2500;
+  box-shadow:0 8px 24px rgba(180,140,60,.35),0 2px 6px rgba(0,0,0,.1),0 1px 0 rgba(255,255,255,.5) inset;
+  animation:cpGoldShimmer 3s linear infinite;
+  transition:transform .15s,box-shadow .15s;
+  opacity:.35;pointer-events:none;
+}
+.cp-ok-btn.ready{
+  opacity:1;pointer-events:all;
+}
+.cp-ok-btn.ready:active{
+  transform:scale(.96);
+  box-shadow:0 4px 12px rgba(180,140,60,.25);
+}
+/* Success state */
+.cp-success-wrap{
+  display:none;flex-direction:column;align-items:center;gap:14px;
+  padding:32px 24px 28px;animation:cpStepSlide .4s cubic-bezier(.22,1,.36,1) both;
+}
+.cp-success-wrap.show{display:flex;}
+.cp-success-ico{
+  width:72px;height:72px;border-radius:50%;
+  background:linear-gradient(145deg,#5ab96a,#3a9a4a);
+  border:2px solid rgba(80,180,100,.4);
+  display:flex;align-items:center;justify-content:center;font-size:32px;
+  box-shadow:0 12px 32px rgba(80,160,100,.3);
+  animation:cpSuccessScale .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+.cp-success-title{
+  font-size:18px;font-weight:700;color:rgba(40,100,50,.85);text-align:center;
+}
+.cp-success-sub{font-size:13px;color:rgba(80,120,60,.55);text-align:center;}
+/* Cancel link */
+.cp-cancel-link{
+  background:none;border:none;cursor:pointer;
+  font-size:13.5px;color:rgba(140,100,30,.45);
+  font-family:"Outfit",sans-serif;font-weight:500;letter-spacing:.03em;
+  padding:4px 0;text-align:center;transition:color .15s;
+}
+.cp-cancel-link:active{color:rgba(140,100,30,.8);}
+
+/* ══════════════════════════════
+
+/* Simplified real wallpaper thumbnail preview (gradient-based) */
+.wp-thumb-inner img{display:none;}
+</style>
+</head>
+<body>
+<div id="phoneFrame">
+
+  <!-- Launcher — tap the icon to open Settings -->
+  <div id="launcherScreen">
+    <div class="settings-launch-icon" onclick="openSettings()">⚙️</div>
+    <div class="launch-title">Apeion OS — Settings</div>
+    <div class="launch-sub">Standalone extract • Tap the gear to open the full Settings app</div>
+  </div>
+
+  <!-- ══ SETTINGS APP (verbatim structure from Apeion_OS_3.html) ══ -->
+  <div id="settingsApp">
+    <div class="set-body" id="setBody"></div>
+  </div>
+
+  <div id="osToast"></div>
+  <input type="file" id="galWpInput" accept="image/*" style="display:none" onchange="onGalleryWp(event)">
+
+  <!-- ══ DEVELOPER PIN MODAL ══ -->
+  <div id="devPinModal">
+    <div class="dev-pin-title">🔐 Developer Verification</div>
+    <div class="dev-pin-sub">Lock screen PIN dalo</div>
+    <div class="dev-pin-dots" id="devPinDots">
+      <div class="dev-pin-dot" id="dp0"></div>
+      <div class="dev-pin-dot" id="dp1"></div>
+      <div class="dev-pin-dot" id="dp2"></div>
+      <div class="dev-pin-dot" id="dp3"></div>
+    </div>
+    <div class="dev-pin-err" id="devPinErr">Wrong PIN. Try again.</div>
+    <div class="dev-numpad">
+      <button class="dev-num-btn" onclick="_devNum(1)">1</button>
+      <button class="dev-num-btn" onclick="_devNum(2)">2<span class="sub">ABC</span></button>
+      <button class="dev-num-btn" onclick="_devNum(3)">3<span class="sub">DEF</span></button>
+      <button class="dev-num-btn" onclick="_devNum(4)">4<span class="sub">GHI</span></button>
+      <button class="dev-num-btn" onclick="_devNum(5)">5<span class="sub">JKL</span></button>
+      <button class="dev-num-btn" onclick="_devNum(6)">6<span class="sub">MNO</span></button>
+      <button class="dev-num-btn" onclick="_devNum(7)">7<span class="sub">PQRS</span></button>
+      <button class="dev-num-btn" onclick="_devNum(8)">8<span class="sub">TUV</span></button>
+      <button class="dev-num-btn" onclick="_devNum(9)">9<span class="sub">WXYZ</span></button>
+      <button class="dev-num-btn zero" onclick="_devNum(0)">0</button>
+      <button class="dev-num-btn del" onclick="_devDel()">⌫</button>
+    </div>
+    <button class="dev-cancel-btn" onclick="_closeDevPin()">Cancel</button>
+  </div>
+
+  <!-- ══ CHANGE PIN MODAL ══ -->
+  <div id="changePinModal">
+    <div class="cp-card">
+      <div class="cp-success-wrap" id="cpSuccessWrap">
+        <div class="cp-success-ico">✓</div>
+        <div class="cp-success-title">PIN Changed!</div>
+        <div class="cp-success-sub">Naya PIN set ho gaya hai.<br>Ab naye PIN se unlock hoga.</div>
+      </div>
+      <div id="cpMainContent">
+        <div class="cp-header">
+          <div class="cp-icon">
+            <div class="cp-icon-ring"></div>
+            🔑
+          </div>
+          <div class="cp-title" id="cpTitle">Change PIN</div>
+          <div class="cp-steps">
+            <div class="cp-step-pip active" id="cpPip0"></div>
+            <div class="cp-step-pip" id="cpPip1"></div>
+            <div class="cp-step-pip" id="cpPip2"></div>
+          </div>
+          <div class="cp-step-label" id="cpStepLabel">Step 1 of 3</div>
+          <div class="cp-divider"></div>
+        </div>
+        <div class="cp-dots-section">
+          <div class="cp-dots-row">
+            <div class="cp-dots" id="cpDots">
+              <div class="cp-dot" id="cpd0"></div>
+              <div class="cp-dot" id="cpd1"></div>
+              <div class="cp-dot" id="cpd2"></div>
+              <div class="cp-dot" id="cpd3"></div>
+            </div>
+            <div class="cp-err" id="cpErr"></div>
+          </div>
+        </div>
+        <div class="cp-numpad">
+          <button class="cp-num-btn" onclick="_cpNum(1)">1</button>
+          <button class="cp-num-btn" onclick="_cpNum(2)">2<span class="sub">ABC</span></button>
+          <button class="cp-num-btn" onclick="_cpNum(3)">3<span class="sub">DEF</span></button>
+          <button class="cp-num-btn" onclick="_cpNum(4)">4<span class="sub">GHI</span></button>
+          <button class="cp-num-btn" onclick="_cpNum(5)">5<span class="sub">JKL</span></button>
+          <button class="cp-num-btn" onclick="_cpNum(6)">6<span class="sub">MNO</span></button>
+          <button class="cp-num-btn" onclick="_cpNum(7)">7<span class="sub">PQRS</span></button>
+          <button class="cp-num-btn" onclick="_cpNum(8)">8<span class="sub">TUV</span></button>
+          <button class="cp-num-btn" onclick="_cpNum(9)">9<span class="sub">WXYZ</span></button>
+          <button class="cp-num-btn zero" onclick="_cpNum(0)">0</button>
+          <button class="cp-num-btn del" onclick="_cpDel()">⌫</button>
+        </div>
+        <div class="cp-actions">
+          <button class="cp-ok-btn" id="cpOkBtn" onclick="_cpOk()">Confirm</button>
+          <button class="cp-cancel-link" onclick="closeChangePinModal()">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- ══ DEVELOPER OPTIONS PANEL ══ -->
+<div id="devOptionsPanel">
+  <div class="dev-header">
+    <span class="dev-header-ico">🛠️</span>
+    <span class="dev-header-title">Developer Options</span>
+    <span class="dev-header-badge">DEV</span>
+    <button class="dev-close-btn" onclick="_closeDevOptions()">✕</button>
+  </div>
+  <div class="dev-body">
+    <div class="dev-warning" style="margin:0 0 16px;">
+      <span style="font-size:20px;">⚠️</span>
+      <span class="dev-warning-text">Yeh settings sirf developers ke liye hain. Galat settings se OS behave badal sakta hai. Koi bhi change tab close karne pe reset ho jaata hai.</span>
+    </div>
+
+    <!-- ── DEBUGGING ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">Debugging</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devToggle('usbDebug')">
+          <div class="dev-row-ico" style="background:rgba(0,180,255,.15);border:1px solid rgba(0,180,255,.3);">🔌</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">USB Debugging</div>
+            <div class="dev-row-sub">ADB commands allow karo (simulated)</div>
+          </div>
+          <div class="dev-switch" id="devSw-usbDebug"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('wirelessDebug')">
+          <div class="dev-row-ico" style="background:rgba(0,220,160,.15);border:1px solid rgba(0,220,160,.3);">📡</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Wireless Debugging</div>
+            <div class="dev-row-sub">Wi-Fi pe ADB connect karo — port: 5555</div>
+          </div>
+          <div class="dev-switch" id="devSw-wirelessDebug"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('stayAwake')">
+          <div class="dev-row-ico" style="background:rgba(255,200,0,.15);border:1px solid rgba(255,200,0,.3);">☀️</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Stay Awake</div>
+            <div class="dev-row-sub">Charging pe screen OFF nahi hogi</div>
+          </div>
+          <div class="dev-switch" id="devSw-stayAwake"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('showTouches')">
+          <div class="dev-row-ico" style="background:rgba(255,100,200,.15);border:1px solid rgba(255,100,200,.3);">👆</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Show Tap Locations</div>
+            <div class="dev-row-sub">Har touch pe visual dot dikhao</div>
+          </div>
+          <div class="dev-switch" id="devSw-showTouches"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('pointerLocation')">
+          <div class="dev-row-ico" style="background:rgba(255,150,50,.15);border:1px solid rgba(255,150,50,.3);">🎯</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Pointer Location</div>
+            <div class="dev-row-sub">Touch coordinates crosshair + info bar dikhao</div>
+          </div>
+          <div class="dev-switch" id="devSw-pointerLocation"><div class="dev-switch-knob"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── IN-APP DEVTOOLS (no laptop needed) ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">In-App DevTools</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devToggle('onScreenConsole')">
+          <div class="dev-row-ico" style="background:rgba(0,255,120,.15);border:1px solid rgba(0,255,120,.3);">🖥️</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">On-Screen Console</div>
+            <div class="dev-row-sub">console.log/warn/error live overlay mein dikhao</div>
+          </div>
+          <div class="dev-switch" id="devSw-onScreenConsole"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('elementInspector')">
+          <div class="dev-row-ico" style="background:rgba(0,200,255,.15);border:1px solid rgba(0,200,255,.3);">🔍</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Element Inspector</div>
+            <div class="dev-row-sub">Kisi bhi element ko tap karo — tag, size, style dikhega</div>
+          </div>
+          <div class="dev-switch" id="devSw-elementInspector"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('errorCatcher')">
+          <div class="dev-row-ico" style="background:rgba(255,60,60,.15);border:1px solid rgba(255,60,60,.3);">🚨</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Auto Error Catcher</div>
+            <div class="dev-row-sub">Crash hote hi stack trace overlay auto dikhao</div>
+          </div>
+          <div class="dev-switch" id="devSw-errorCatcher"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devAction('showStorageViewer')">
+          <div class="dev-row-ico" style="background:rgba(150,100,255,.15);border:1px solid rgba(150,100,255,.3);">🗄️</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">LocalStorage / IndexedDB Viewer</div>
+            <div class="dev-row-sub">Saari keys live dekho, edit ya delete karo</div>
+          </div>
+          <div style="color:rgba(150,100,255,.9);font-size:13px;font-weight:600;padding-right:4px;">VIEW</div>
+        </div>
+        <div id="storageViewerPanel" style="display:none;padding:12px;background:rgba(150,100,255,.08);border-radius:8px;margin-top:8px;border:1px solid rgba(150,100,255,.2);max-height:280px;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+          <div id="storageViewerList" style="font-size:12px;color:rgba(255,255,255,.8);">Loading...</div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('jankDetector')">
+          <div class="dev-row-ico" style="background:rgba(255,170,0,.15);border:1px solid rgba(255,170,0,.3);">🐢</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Long Task / Jank Detector</div>
+            <div class="dev-row-sub">Main thread 50ms+ block ho toh warning do</div>
+          </div>
+          <div class="dev-switch" id="devSw-jankDetector"><div class="dev-switch-knob"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LAYOUT & DISPLAY ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">Layout &amp; Display</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devToggle('rtl')">
+          <div class="dev-row-ico" style="background:rgba(255,100,80,.15);border:1px solid rgba(255,100,80,.25);">↔️</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Force RTL Layout</div>
+            <div class="dev-row-sub">Screen direction: Right → Left (Arabic/Hebrew style)</div>
+          </div>
+          <div class="dev-switch" id="devSw-rtl"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('layoutBounds')">
+          <div class="dev-row-ico" style="background:rgba(0,200,255,.15);border:1px solid rgba(0,200,255,.3);">📏</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Show Layout Bounds</div>
+            <div class="dev-row-sub">Har element ka border/margin/padding dikhao</div>
+          </div>
+          <div class="dev-switch" id="devSw-layoutBounds"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('forceDark')">
+          <div class="dev-row-ico" style="background:rgba(40,40,80,.4);border:1px solid rgba(150,150,255,.3);">🌑</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Force Dark Mode Override</div>
+            <div class="dev-row-sub">Saari apps pe dark background force karo</div>
+          </div>
+          <div class="dev-switch" id="devSw-forceDark"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('grid4col')">
+          <div class="dev-row-ico" style="background:rgba(255,200,50,.15);border:1px solid rgba(255,200,50,.25);">📦</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Force 4-column Grid</div>
+            <div class="dev-row-sub">Drawer aur home grid density 4-col override</div>
+          </div>
+          <div class="dev-switch" id="devSw-grid4col"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('highContrast')">
+          <div class="dev-row-ico" style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);">🔆</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">High Contrast Text</div>
+            <div class="dev-row-sub">Text readability improve karo accessibility ke liye</div>
+          </div>
+          <div class="dev-switch" id="devSw-highContrast"><div class="dev-switch-knob"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ANIMATION SCALE ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">Animation Scale</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devToggle('animScale')">
+          <div class="dev-row-ico" style="background:rgba(100,100,255,.15);border:1px solid rgba(100,100,255,.25);">🐢</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Slow Animator Scale (2×)</div>
+            <div class="dev-row-sub">Transitions aur animations 2× slow karo</div>
+          </div>
+          <div class="dev-switch" id="devSw-animScale"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('noAnim')">
+          <div class="dev-row-ico" style="background:rgba(255,60,60,.15);border:1px solid rgba(255,60,60,.3);">⚡</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Disable All Animations</div>
+            <div class="dev-row-sub">0× animator scale — instant transitions</div>
+          </div>
+          <div class="dev-switch" id="devSw-noAnim"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('transitionDraw')">
+          <div class="dev-row-ico" style="background:rgba(80,255,200,.15);border:1px solid rgba(80,255,200,.3);">🎞️</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Show Surface Updates</div>
+            <div class="dev-row-sub">Repaint hone wale areas ko flash karo</div>
+          </div>
+          <div class="dev-switch" id="devSw-transitionDraw"><div class="dev-switch-knob"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── GPU RENDERING ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">GPU Rendering</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devToggle('gpuOverdraw')">
+          <div class="dev-row-ico" style="background:rgba(80,255,180,.15);border:1px solid rgba(80,255,180,.25);">📐</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Debug GPU Overdraw</div>
+            <div class="dev-row-sub">Render layers ko color se visualize karo</div>
+          </div>
+          <div class="dev-switch" id="devSw-gpuOverdraw"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('hwAccel')">
+          <div class="dev-row-ico" style="background:rgba(160,80,255,.15);border:1px solid rgba(160,80,255,.3);">🖥️</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Force GPU Hardware Accel</div>
+            <div class="dev-row-sub">translateZ(0) sabhi animated elements pe lagao</div>
+          </div>
+          <div class="dev-switch" id="devSw-hwAccel"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('fpsOverlay')">
+          <div class="dev-row-ico" style="background:rgba(0,255,100,.15);border:1px solid rgba(0,255,100,.3);">📊</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">FPS Counter Overlay</div>
+            <div class="dev-row-sub">Real-time frames-per-second screen corner pe</div>
+          </div>
+          <div class="dev-switch" id="devSw-fpsOverlay"><div class="dev-switch-knob"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── NETWORK ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">Network</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devToggle('networkLogs')">
+          <div class="dev-row-ico" style="background:rgba(0,160,255,.15);border:1px solid rgba(0,160,255,.3);">🌐</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Network Activity Log</div>
+            <div class="dev-row-sub">Console mein API calls aur fetch requests print karo</div>
+          </div>
+          <div class="dev-switch" id="devSw-networkLogs"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devAction('clearCache')">
+          <div class="dev-row-ico" style="background:rgba(255,120,0,.15);border:1px solid rgba(255,120,0,.3);">🗑️</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Clear All App Cache</div>
+            <div class="dev-row-sub">localStorage, sessionStorage, IndexedDB — sab wipe karo</div>
+          </div>
+          <div style="color:rgba(255,120,0,.9);font-size:13px;font-weight:600;padding-right:4px;">CLEAR</div>
+        </div>
+        <div class="dev-row" onclick="_devAction('copyLogs')">
+          <div class="dev-row-ico" style="background:rgba(100,220,255,.15);border:1px solid rgba(100,220,255,.3);">📋</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Copy Error Logs</div>
+            <div class="dev-row-sub">Console errors clipboard pe copy karo</div>
+          </div>
+          <div style="color:rgba(100,220,255,.9);font-size:13px;font-weight:600;padding-right:4px;">COPY</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PERFORMANCE ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">Performance</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devToggle('bgProcessLimit')">
+          <div class="dev-row-ico" style="background:rgba(255,180,0,.15);border:1px solid rgba(255,180,0,.3);">⚙️</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Limit Background Processes</div>
+            <div class="dev-row-sub">Background timers aur intervals pause karo</div>
+          </div>
+          <div class="dev-switch" id="devSw-bgProcessLimit"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('memStats')">
+          <div class="dev-row-ico" style="background:rgba(0,255,200,.15);border:1px solid rgba(0,255,200,.3);">🧠</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Memory Usage Stats</div>
+            <div class="dev-row-sub">JS heap usage status bar mein dikhao</div>
+          </div>
+          <div class="dev-switch" id="devSw-memStats"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('perfMode')">
+          <div class="dev-row-ico" style="background:rgba(255,80,80,.15);border:1px solid rgba(255,80,80,.3);">🚀</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Performance Mode</div>
+            <div class="dev-row-sub">Shadows aur blur effects disable karo — max speed</div>
+          </div>
+          <div class="dev-switch" id="devSw-perfMode"><div class="dev-switch-knob"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── APPS ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">Apps &amp; Processes</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devToggle('dontKeepActivities')">
+          <div class="dev-row-ico" style="background:rgba(255,50,50,.15);border:1px solid rgba(255,50,50,.3);">💀</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Don't Keep Activities</div>
+            <div class="dev-row-sub">App close hote hi state destroy karo (Android original)</div>
+          </div>
+          <div class="dev-switch" id="devSw-dontKeepActivities"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devToggle('mockLocation')">
+          <div class="dev-row-ico" style="background:rgba(0,200,100,.15);border:1px solid rgba(0,200,100,.3);">📍</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Allow Mock Locations</div>
+            <div class="dev-row-sub">Fake GPS coordinates inject karne do</div>
+          </div>
+          <div class="dev-switch" id="devSw-mockLocation"><div class="dev-switch-knob"></div></div>
+        </div>
+        <div class="dev-row" onclick="_devAction('appInfo')">
+          <div class="dev-row-ico" style="background:rgba(150,100,255,.15);border:1px solid rgba(150,100,255,.3);">ℹ️</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Running Processes Info</div>
+            <div class="dev-row-sub">Active timers aur event listeners count karo</div>
+          </div>
+          <div style="color:rgba(150,100,255,.9);font-size:13px;font-weight:600;padding-right:4px;">VIEW</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STORAGE QUOTA MONITOR ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">Storage &amp; Cache</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devAction('showStorageQuota')">
+          <div class="dev-row-ico" style="background:rgba(100,200,255,.15);border:1px solid rgba(100,200,255,.3);">💾</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Storage Quota Monitor</div>
+            <div class="dev-row-sub">Real-time navigator.storage.estimate() usage</div>
+          </div>
+          <div style="color:rgba(100,200,255,.9);font-size:13px;font-weight:600;padding-right:4px;">CHECK</div>
+        </div>
+        <div id="storageQuotaPanel" style="display:none;padding:12px;background:rgba(100,200,255,.08);border-radius:8px;margin-top:8px;border:1px solid rgba(100,200,255,.2);">
+          <div style="font-size:12px;color:rgba(255,255,255,.8);line-height:1.6;font-family:monospace;">
+            <div>📊 Storage Quota:</div>
+            <div id="storageQuotaInfo" style="margin-top:8px;color:rgba(100,200,255,.9);">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── RESET ── -->
+    <div class="dev-section">
+      <div class="dev-sec-title">Reset</div>
+      <div class="dev-card">
+        <div class="dev-row" onclick="_devResetAll(); toast('🔄 Saare dev options reset ho gaye!');">
+          <div class="dev-row-ico" style="background:rgba(255,60,60,.15);border:1px solid rgba(255,60,60,.3);">🔄</div>
+          <div class="dev-row-text">
+            <div class="dev-row-title">Reset All Dev Options</div>
+            <div class="dev-row-sub">Saari settings ek baar mein default pe laao</div>
+          </div>
+          <div style="color:rgba(255,80,80,.9);font-size:13px;font-weight:600;padding-right:4px;">RESET</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /#phoneFrame -->
+
+<script>
+/* ══════════════════════════════════════════
+   UTILS (verbatim from Apeion OS 3)
+══════════════════════════════════════════ */
+function show(id){ const el=document.getElementById(id); if(el) el.classList.remove("hidden"); }
+function hide(id){ const el=document.getElementById(id); if(el) el.classList.add("hidden"); }
+let _tt;
+function toast(msg){
+  const t=document.getElementById("osToast");
+  if(!t) return;
+  t.textContent=msg; t.classList.add("show");
+  clearTimeout(_tt); _tt=setTimeout(()=>t.classList.remove("show"),2300);
+}
+
+const ApeionSecurity = (() => {
+  'use strict';
+
+  /* ── CONSTANTS ── */
+  const KEY_FAILS    = 'aos_sec_fails';
+  const KEY_LOCKED   = 'aos_sec_locked_until';
+  const KEY_TOTAL    = 'aos_sec_total_fails';
+  const KEY_SESSION  = 'aos_sec_session';
+  const KEY_NONCES   = 'aos_sec_nonces';
+  const KEY_PIN_HASH = 'aos_pin_hash';
+  const MAX_TRIES    = 3;    // ⬆️ 5 → 3 tries per cycle
+  const MAX_TOTAL    = 20;   // ⬆️ 50 → 20 total before permanent lock
+  const BASE_CD_SEC  = 60;   // ⬆️ 30s → 60s base cooldown
+
+  /* ══════════════════════════════════════════
+     [1] Web Crypto API — SHA-256
+     Python equivalent: hashlib.sha256(pin.encode()).hexdigest()
+     PIN kabhi plain text mein store/compare nahi hota
+  ══════════════════════════════════════════ */
+  async function sha256(str) {
+    const buf = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(str)
+    );
+    return Array.from(new Uint8Array(buf))
+      .map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+
+  /* ── Store hashed PIN on first boot ── */
+  async function initPinHash() {
+    if (!localStorage.getItem(KEY_PIN_HASH)) {
+      const h = await sha256('1800' + _deviceSalt());
+      localStorage.setItem(KEY_PIN_HASH, h);
+    }
+  }
+
+  /* ── Device-specific salt (Python: os.urandom based) ── */
+  function _deviceSalt() {
+    let salt = localStorage.getItem('aos_dev_salt');
+    if (!salt) {
+      const arr = new Uint8Array(16);
+      crypto.getRandomValues(arr);
+      salt = Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+      localStorage.setItem('aos_dev_salt', salt);
+    }
+    return salt;
+  }
+
+  /* ══════════════════════════════════════════
+     [2] HMAC-SHA256 — Session Token
+     Python equivalent: hmac.new(key, msg, hashlib.sha256).hexdigest()
+     Login ke baad ek cryptographic session token banta hai
+  ══════════════════════════════════════════ */
+  async function generateHMAC(message, keyStr) {
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw', new TextEncoder().encode(keyStr),
+      { name:'HMAC', hash:'SHA-256' }, false, ['sign']
+    );
+    const sig = await crypto.subtle.sign(
+      'HMAC', keyMaterial, new TextEncoder().encode(message)
+    );
+    return Array.from(new Uint8Array(sig))
+      .map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  async function createSession() {
+    const nonce = _genNonce();
+    const ts    = Date.now().toString();
+    const token = await generateHMAC(nonce + ts, _deviceSalt());
+    const session = { token, nonce, ts, valid: true };
+    localStorage.setItem(KEY_SESSION, JSON.stringify(session));
+    return session;
+  }
+
+  async function verifySession() {
+    try {
+      const s = JSON.parse(localStorage.getItem(KEY_SESSION) || 'null');
+      if (!s || !s.valid) return false;
+      const expected = await generateHMAC(s.nonce + s.ts, _deviceSalt());
+      // Constant-time compare
+      return _constTimeEqual(expected, s.token);
+    } catch { return false; }
+  }
+
+  function invalidateSession() {
+    localStorage.removeItem(KEY_SESSION);
+  }
+
+  /* ══════════════════════════════════════════
+     [9] Nonce System — Replay Attack Prevention
+     Har login attempt ka ek unique nonce hota hai
+     Ek nonce dobara use nahi ho sakta
+  ══════════════════════════════════════════ */
+  function _genNonce() {
+    const arr = new Uint8Array(12);
+    crypto.getRandomValues(arr);
+    return Array.from(arr).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  function _isNonceUsed(nonce) {
+    try {
+      const used = JSON.parse(localStorage.getItem(KEY_NONCES)||'[]');
+      return used.includes(nonce);
+    } catch { return false; }
+  }
+
+  function _markNonce(nonce) {
+    try {
+      const used = JSON.parse(localStorage.getItem(KEY_NONCES)||'[]');
+      used.push(nonce);
+      // sirf last 50 nonces rakh0
+      if(used.length > 50) used.splice(0, used.length-50);
+      localStorage.setItem(KEY_NONCES, JSON.stringify(used));
+    } catch {}
+  }
+
+  /* ══════════════════════════════════════════
+     [7] Timing Defense — Constant-time compare
+     Python equivalent: hmac.compare_digest(a, b)
+     Timing attack: attacker response time measure
+     karke PIN guess karta hai — yeh rokta hai
+  ══════════════════════════════════════════ */
+  function _constTimeEqual(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    const la = a.length, lb = b.length;
+    let diff = la ^ lb;
+    const len = Math.max(la, lb);
+    for (let i = 0; i < len; i++) {
+      diff |= (a.charCodeAt(i % la) || 0) ^ (b.charCodeAt(i % lb) || 0);
+    }
+    return diff === 0;
+  }
+
+  /* ══════════════════════════════════════════
+     [6] Input Firewall — XSS / Injection sanitizer
+     Python equivalent: bleach.clean() / html.escape()
+  ══════════════════════════════════════════ */
+  function sanitize(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#x27;').replace(/`/g,'&#x60;')
+      .replace(/\//g,'&#x2F;').replace(/\\/g,'&#x5C;')
+      .replace(/javascript:/gi,'').replace(/data:/gi,'')
+      .replace(/on\w+\s*=/gi,'').replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi,'');
+  }
+
+  /* ── Rate limiter ── */
+  let _lastKey = 0, _keyCount = 0, _keyWindow = 0;
+  function rateLimitOk() {
+    const now = Date.now();
+    if (now - _lastKey < 80) return false;
+    // Burst detection: 8 presses in 2s = suspicious
+    if (now - _keyWindow > 2000) { _keyCount = 0; _keyWindow = now; }
+    _keyCount++;
+    if (_keyCount > 8) { _logAnomaly('BURST_INPUT'); return false; }
+    _lastKey = now;
+    return true;
+  }
+
+  /* ══════════════════════════════════════════
+     [4] Brute Force — Attempt limit + cooldown
+  ══════════════════════════════════════════ */
+  function _getState() {
+    return {
+      fails:       parseInt(localStorage.getItem(KEY_FAILS)   || '0'),
+      lockedUntil: parseInt(localStorage.getItem(KEY_LOCKED)  || '0'),
+      totalFails:  parseInt(localStorage.getItem(KEY_TOTAL)   || '0'),
+    };
+  }
+  function _saveState(s) {
+    localStorage.setItem(KEY_FAILS,  s.fails);
+    localStorage.setItem(KEY_LOCKED, s.lockedUntil);
+    localStorage.setItem(KEY_TOTAL,  s.totalFails);
+  }
+  function _resetState(s) { s.fails = 0; s.lockedUntil = 0; _saveState(s); }
+
+  function _cooldownSec(totalFails) {
+    const mul = Math.floor(totalFails / MAX_TRIES);
+    const raw = BASE_CD_SEC * Math.pow(2, Math.max(0, mul - 1));
+    return Math.min(raw, 1800); // ⬆️ Max 30 min lockout (was 5 min)
+  }
+
+  function isLockedOut() {
+    const s = _getState();
+    if (s.totalFails >= MAX_TOTAL) return { locked:true, permanent:true, secs:0 };
+    // Agar lockedUntil bahut bada hai (purana bug) — max 5 min se zyada nahi
+    const maxAllowed = Date.now() + 300 * 1000;
+    if (s.lockedUntil > maxAllowed) {
+      s.lockedUntil = maxAllowed;
+      _saveState(s);
+    }
+    if (s.lockedUntil > Date.now()) {
+      return { locked:true, permanent:false, secs:Math.ceil((s.lockedUntil-Date.now())/1000) };
+    }
+    return { locked:false };
+  }
+
+  function recordFail() {
+    const s = _getState();
+    s.fails++; s.totalFails++;
+    _logAnomaly('WRONG_PIN');
+    if (s.totalFails >= MAX_TOTAL) {
+      s.lockedUntil = Date.now() + 9999999999;
+    } else if (s.fails >= MAX_TRIES) {
+      s.lockedUntil = Date.now() + _cooldownSec(s.totalFails) * 1000;
+      s.fails = 0;
+    }
+    _saveState(s);
+    invalidateSession();
+    return isLockedOut();
+  }
+
+  function recordSuccess() {
+    const s = _getState();
+    _resetState(s);
+  }
+
+  /* ══════════════════════════════════════════
+     [10] Entropy / Behavioral Anomaly Logger
+     Python equivalent: behavioral analysis engine
+     Unusual patterns log karta hai memory mein
+  ══════════════════════════════════════════ */
+  const _anomalyLog = [];
+  function _logAnomaly(type) {
+    if (localStorage.getItem('aos_activity_tracking') === '0') return;
+    _anomalyLog.push({ type, ts: Date.now() });
+    if (_anomalyLog.length > 100) _anomalyLog.shift();
+    // ⬆️ 3 anomalies in 5s = force 2min lockout
+    const recent5s = _anomalyLog.filter(e => Date.now() - e.ts < 5000);
+    if (recent5s.length >= 3) {
+      const s = _getState();
+      if (s.lockedUntil <= Date.now()) {
+        s.lockedUntil = Date.now() + 120 * 1000;
+        _saveState(s);
+      }
+    }
+  }
+
+
+  /* ══════════════════════════════════════════
+     [3] Web Worker — Background Threat Monitor
+     Python equivalent: threading.Thread(daemon=True)
+     Bilkul alag thread mein silently scan karta hai
+  ══════════════════════════════════════════ */
+  const _workerCode = `
+    let _checks = 0;
+    let _startTime = Date.now();
+    setInterval(() => {
+      _checks++;
+      // Uptime aur check count track karo
+      const uptime = Math.floor((Date.now() - _startTime) / 1000);
+      // Har 30s mein main thread ko status bhejo
+      if (_checks % 6 === 0) {
+        self.postMessage({ type:'HEARTBEAT', uptime, checks:_checks });
+      }
+    }, 5000);
+
+    // Simulated threat scan loop (Python: background kernel scan)
+    setInterval(() => {
+      const threats = [];
+      // Check: page mein suspicious global vars inject ho gaye?
+      const suspiciousGlobals = ['__proto__','constructor','prototype'];
+      // Worker sirf message bhejta hai — main thread action leta hai
+      self.postMessage({ type:'SCAN_OK', threats });
+    }, 15000);
+  `;
+
+  let _worker = null;
+  function _startWorker() {
+    // Activity Tracking OFF hai to worker mat chalaao
+    if (localStorage.getItem('aos_activity_tracking') === '0') return;
+    try {
+      const blob = new Blob([_workerCode], { type:'application/javascript' });
+      _worker = new Worker(URL.createObjectURL(blob));
+      _worker.onmessage = (e) => {
+        if (e.data.type === 'HEARTBEAT') {
+          // Background monitor alive hai
+        } else if (e.data.type === 'SCAN_OK') {
+        }
+      };
+      _worker.onerror = () => {}; // silently fail
+    } catch(e) {}
+  }
+
+  /* ── DevTools Detection ── */
+  let _devOpen = false;
+  setInterval(() => {
+    const t = window.outerWidth - window.innerWidth > 150
+           || window.outerHeight - window.innerHeight > 150;
+    if (t && !_devOpen) {
+      _devOpen = true;
+      _logAnomaly('DEVTOOLS_OPEN');
+      console.warn('%c🛡️ Apeion Security Kernel: Inspection attempt detected.','color:#ff4444;font-size:13px;font-weight:bold;');
+    } else if (!t) { _devOpen = false; }
+  }, 4000); // was 1500ms — no UX diff, 2.6x fewer checks
+
+  /* ── Input Sanitizer on all fields ── */
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('input').forEach(el => {
+      el.addEventListener('input', e => {
+        if (e.target.type !== 'range' && e.target.type !== 'file') {
+          e.target.value = sanitize(e.target.value);
+        }
+      });
+    });
+  });
+
+  /* ── INIT ── */
+  // Permanent lock reset — totalFails aur lockedUntil dono clear karo
+  (function _fixLegacyLockout() {
+    localStorage.setItem('aos_sec_total_fails', '0');
+    localStorage.setItem('aos_sec_fails', '0');
+    localStorage.setItem('aos_sec_locked_until', '0');
+    localStorage.removeItem('aos_sec_session');
+    localStorage.removeItem('aos_sec_nonces');
+  })();
+  initPinHash();
+  setTimeout(() => { _startWorker(); }, 800);
+
+  return {
+    isLockedOut, recordFail, recordSuccess,
+    sanitize, rateLimitOk,
+    sha256, generateHMAC, createSession, verifySession,
+    invalidateSession, _genNonce, _isNonceUsed, _markNonce,
+    _constTimeEqual, _logAnomaly, _deviceSalt
+  };
+})();
+
+
+/* ══════════════════════════════════════════
+   WALLPAPER SYSTEM — lightweight standalone version
+   Note: Full Apeion OS ka wallpaper system hand-drawn canvas
+   art (drawWallpaperToCanvas + WPS array) use karta hai jo
+   khud ek bada alag module hai. Yahan same real picker/apply
+   flow hai, bas thumbnails CSS gradients se bane hain.
+══════════════════════════════════════════ */
+let wpTarget="home", selWpIdx=0, customHomeWp=null, customLockWp=null;
+const WPS=[
+  {name:"🌄 Mountain Sunset", v:"linear-gradient(160deg,#ff7e5f,#feb47b 50%,#3a1c71)"},
+  {name:"🌊 Ocean Waves",     v:"linear-gradient(160deg,#00c6ff,#0072ff)"},
+  {name:"🌲 Forest Path",     v:"linear-gradient(160deg,#134e5e,#71b280)"},
+  {name:"🏜️ Desert Dunes",    v:"linear-gradient(160deg,#f6d365,#fda085)"},
+  {name:"🌃 City Lights",     v:"linear-gradient(160deg,#0f2027,#203a43,#2c5364)"},
+  {name:"🌌 Northern Aurora", v:"linear-gradient(160deg,#43cea2,#185a9d)"},
+  {name:"🌸 Cherry Blossom",  v:"linear-gradient(160deg,#ffdde1,#ee9ca7)"},
+  {name:"🌌 Space Galaxy",    v:"linear-gradient(160deg,#000428,#004e92)"},
+  {name:"🌅 Golden Hour",     v:"linear-gradient(160deg,#ff512f,#f09819)"},
+];
+function openWpPicker(target){
+  wpTarget=target;
+  const _wpSec=document.getElementById("wpSec"); if(_wpSec) _wpSec.style.display="block";
+  const _wpT=document.getElementById("wpSecTitle"); if(_wpT) _wpT.textContent = target==="lock" ? "🔒 Lock Screen Wallpaper" : "🏠 Home Screen Wallpaper";
+  selWpIdx=0;
+  renderWpGrid();
+  setTimeout(()=>{ const el=document.getElementById("wpSec"); if(el) el.scrollIntoView({behavior:"smooth"}); },100);
+}
+function renderWpGrid(){
+  const g=document.getElementById("wpGrid"); if(!g) return;
+  const customVal = wpTarget==="lock" ? customLockWp : customHomeWp;
+  const all=customVal?[{name:"Custom",v:customVal,img:true},...WPS]:WPS;
+  g.innerHTML="";
+  all.forEach((wp,i)=>{
+    const div=document.createElement("div");
+    div.className="wp-thumb"+(i===selWpIdx?" sel":"");
+    div.onclick=()=>selWp(i);
+    const inner=document.createElement("div");
+    inner.className="wp-thumb-inner";
+    inner.style.cssText = wp.img
+      ? `background-image:url(${wp.v});background-size:cover;background-position:center;`
+      : `background:${wp.v};`;
+    const lbl=document.createElement("div");
+    lbl.className="wp-thumb-label";
+    lbl.textContent=wp.name.replace(/^[^\u0041-\u005A\u0061-\u007A]+/,"");
+    inner.appendChild(lbl);
+    div.appendChild(inner);
+    g.appendChild(div);
+  });
+}
+function selWp(i){ selWpIdx=i; renderWpGrid(); }
+function applySelWp(){
+  const customVal = wpTarget==="lock" ? customLockWp : customHomeWp;
+  const list = customVal?[{name:"Custom",v:customVal,img:true},...WPS]:WPS;
+  const wp=list[selWpIdx]||list[0];
+  if(wpTarget==="lock"){
+    applyLockWp(wp);
+    toast("🔒 Lock screen wallpaper: "+wp.name);
+  } else {
+    applyHomeWp(wp);
+    toast("🏠 Home screen wallpaper: "+wp.name);
+  }
+}
+function applyHomeWp(wp){
+  localStorage.setItem('aos_home_wp_v', wp.v);
+  localStorage.setItem('aos_home_wp_name', wp.name);
+  const frame=document.getElementById('phoneFrame');
+  if(frame && wpTarget!=='lock') frame.style.background = wp.img ? `url(${wp.v}) center/cover` : wp.v;
+}
+function applyLockWp(wp){
+  localStorage.setItem('aos_lock_wp_v', wp.v);
+  localStorage.setItem('aos_lock_wp_name', wp.name);
+}
+function onGalleryWp(event){
+  const file=event.target.files && event.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    if(wpTarget==='lock') customLockWp=e.target.result; else customHomeWp=e.target.result;
+    selWpIdx=0;
+    renderWpGrid();
+    toast('📷 Gallery image loaded — Apply karo confirm karne ke liye');
+  };
+  reader.readAsDataURL(file);
+}
+function loadWp(){
+  const hv=localStorage.getItem('aos_home_wp_v');
+  if(hv){ const frame=document.getElementById('phoneFrame'); if(frame) frame.style.background=hv; }
+}
+
+let wpOpen=false; // wallpaper picker open/close state tracker
+function openSettings(){
+  var sa = document.getElementById("settingsApp");
+  sa.classList.add("open");
+  sa.scrollTop = 0;
+  wpOpen=false;
+  renderSettings();
+  const ls=document.getElementById("launcherScreen");
+  if(ls) ls.style.display="none";
+}
+document.addEventListener('DOMContentLoaded', openSettings);
+function closeSettings(){
+  var sa = document.getElementById("settingsApp");
+  sa.classList.remove("open");
+  sa.scrollTop = 0;
+  wpOpen=false;
+  const _wpSec=document.getElementById("wpSec");
+  if(_wpSec) _wpSec.style.display="none";
+  _clearHomeBlur(); // Settings apna close-path use karta hai (closeApp/goHome nahi), isliye blur yahin clear karna zaroori hai
+}
+
+function renderSettings(){
+  document.getElementById("setBody").innerHTML=`
+
+    <!-- Header — scrolls with content, not sticky -->
+    <div class="set-header" style="margin:-20px -14px 20px;border-radius:0;">
+      <button class="aw-btn" onclick="closeSettings()" style="background:rgba(201,168,76,.18);color:#8a6500;border:1px solid rgba(201,168,76,.35);box-shadow:0 2px 8px rgba(180,140,60,.12);">←</button>
+      <h1>⚙️ Settings</h1>
+      <div style="width:34px;"></div>
+    </div>
+
+    <!-- Premium Profile Card -->
+    <div style="
+      margin-bottom:24px;
+      background:linear-gradient(135deg,rgba(201,168,76,.22) 0%,rgba(255,248,220,.6) 50%,rgba(201,168,76,.15) 100%);
+      border:1px solid rgba(201,168,76,.4);
+      border-radius:24px;padding:20px 18px;
+      backdrop-filter:blur(24px);
+      box-shadow:0 6px 28px rgba(180,140,60,.15),0 1px 0 rgba(255,255,255,.9) inset;
+      display:flex;align-items:center;gap:16px;position:relative;overflow:hidden;
+    ">
+      <div style="position:absolute;top:-20px;right:-20px;width:120px;height:120px;border-radius:50%;
+        background:radial-gradient(circle,rgba(201,168,76,.18),transparent 70%);pointer-events:none;"></div>
+      <div style="
+        width:58px;height:58px;border-radius:50%;flex-shrink:0;
+        background:linear-gradient(135deg,#c9a84c,#e8c96a,#a07820);
+        display:flex;align-items:center;justify-content:center;font-size:26px;
+        box-shadow:0 4px 16px rgba(180,140,60,.35),0 1px 0 rgba(255,255,255,.5) inset;
+        border:2px solid rgba(255,255,255,.6);
+      ">🌸</div>
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:700;color:#3d2a00;letter-spacing:.01em;">Aahil</div>
+        <div style="font-size:11.5px;color:rgba(130,95,20,.65);margin-top:3px;font-weight:500;">Apeion Studio • Developer</div>
+        <div style="
+          display:inline-flex;align-items:center;gap:5px;margin-top:8px;
+          padding:4px 12px;border-radius:20px;
+          background:rgba(201,168,76,.18);border:1px solid rgba(201,168,76,.35);
+          font-size:10px;font-weight:700;color:#8a6500;letter-spacing:.1em;text-transform:uppercase;
+        ">✦ Premium</div>
+      </div>
+      <div style="font-size:20px;color:rgba(160,120,30,.4);">›</div>
+    </div>
+
+    <div class="set-sec">
+      <div class="set-sec-title">🎨 Appearance</div>
+      <div class="set-card">
+        <div class="set-row" onclick="openWpPicker('home')">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#27ae60,#1e8449)">🏠</div>
+          <div style="flex:1"><div class="sri-title">Home Screen Wallpaper</div><div class="sri-sub">Home screen ka background change karo</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+        <div class="set-row" onclick="openWpPicker('lock')">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#c8506a,#a03850)">🔒</div>
+          <div style="flex:1"><div class="sri-title">Lock Screen Wallpaper</div><div class="sri-sub">Lock screen ka alag background</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+        <!-- Weather Widget Toggle -->
+        <div class="dw-toggle-row" onclick="toggleWeatherWidget()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#0288d1,#0277bd)">🌤️</div>
+          <div style="flex:1">
+            <div class="sri-title">Weather Widget</div>
+            <div class="sri-sub" id="wwToggleSub">${localStorage.getItem('aos_weather')==='1'?'On — Home screen pe dikh raha hai':'Off — Home screen pe nahi dikhega'}</div>
+          </div>
+          <div class="dw-switch ${localStorage.getItem('aos_weather')==='1'?'on':''}" id="wwToggleSwitch">
+            <div class="dw-switch-knob"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="wpSec" style="display:none">
+      <div class="set-sec">
+        <div class="set-sec-title" id="wpSecTitle">🖼️ Wallpaper</div>
+        <div class="set-card" style="padding:16px;">
+          <button class="wp-gal-btn" onclick="document.getElementById('galWpInput').click()">📷 Gallery se choose karo</button>
+          <div class="wp-grid" id="wpGrid"></div>
+          <button class="wp-apply" onclick="applySelWp()">✅ Apply Karo</button>
+        </div>
+      </div>
+    </div>
+    <div class="set-sec">
+      <div class="set-sec-title">📱 System</div>
+      <div class="set-card">
+        <div class="set-row">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#c9a84c,#e8c96a)">🌸</div>
+          <div style="flex:1"><div class="sri-title">Apeion OS v3.0</div><div class="sri-sub">100+ apps • Full ecosystem</div></div>
+        </div>
+        <div class="set-row" onclick="openChangePinModal()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#f39c12,#d68910)">🔑</div>
+          <div style="flex:1"><div class="sri-title">PIN Lock</div><div class="sri-sub" id="pinLockSub">Tap karke PIN change karo</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+        <div class="set-row" onclick="toggleTimeFmt()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#0288d1,#01579b)">🕐</div>
+          <div style="flex:1"><div class="sri-title">Time Format</div><div class="sri-sub" id="timeFmtSub">${localStorage.getItem('aos_timefmt')==='12'?'12-hour (6:52 AM)':'24-hour (18:52)'}</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+        <!-- Dynamic Wallpaper Toggle -->
+        <div class="dw-toggle-row" onclick="toggleDynamicWp()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#6c3483,#4a1a6e)">🎨</div>
+          <div style="flex:1">
+            <div class="sri-title">Dynamic Wallpaper</div>
+            <div class="sri-sub" id="dwSub">${localStorage.getItem('aos_dynwp')==='1'?'On — Time ke saath wallpaper change hota hai':'Off — Manual wallpaper use ho raha hai'}</div>
+          </div>
+          <div class="dw-switch ${localStorage.getItem('aos_dynwp')==='1'?'on':''}" id="dwSwitch">
+            <div class="dw-switch-knob"></div>
+          </div>
+        </div>
+        <!-- Background App Keep-Alive Toggle -->
+        <div class="dw-toggle-row" onclick="toggleKeepAlive()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#00897b,#004d40)">⚡</div>
+          <div style="flex:1">
+            <div class="sri-title">Background App Mode</div>
+            <div class="sri-sub" id="keepAliveSub">${localStorage.getItem('aos_keep_alive')==='1'?'On — App band karne ke baad bhi background mein chalu rehta hai':'Off — App close hone pe puri tarah band ho jaata hai'}</div>
+          </div>
+          <div class="dw-switch ${localStorage.getItem('aos_keep_alive')==='1'?'on':''}" id="keepAliveSwitch">
+            <div class="dw-switch-knob"></div>
+          </div>
+        </div>
+        <!-- 3D Maze Engine Toggle -->
+        <div class="dw-toggle-row" onclick="toggle3DEngine()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#4a148c,#7b1fa2)">🎮</div>
+          <div style="flex:1">
+            <div class="sri-title">3D Engine</div>
+            <div class="sri-sub" id="eng3dSub">${localStorage.getItem('aos_3d_engine')==='1'?'On — Three.js maze background mein chal raha hai':'Off — GPU/CPU zero use, engine paused hai'}</div>
+          </div>
+          <div class="dw-switch ${localStorage.getItem('aos_3d_engine')==='1'?'on':''}" id="eng3dSwitch">
+            <div class="dw-switch-knob"></div>
+          </div>
+        </div>
+        <!-- Dynamic Island Toggle -->
+        <div class="dw-toggle-row" onclick="toggleDynamicIslandSetting()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#222,#000)">🏝️</div>
+          <div style="flex:1">
+            <div class="sri-title">Dynamic Island</div>
+            <div class="sri-sub" id="diSettingSub">${localStorage.getItem('aos_dynamic_island')==='1'?'On — Top par notification island dikhega':'Off — Dynamic Island hidden hai'}</div>
+          </div>
+          <div class="dw-switch ${localStorage.getItem('aos_dynamic_island')==='1'?'on':''}" id="diSettingSwitch">
+            <div class="dw-switch-knob"></div>
+          </div>
+        </div>
+        <div class="set-row" onclick="lockOS()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#e74c3c,#c0392b)">🔒</div>
+          <div style="flex:1"><div class="sri-title">Lock Karo</div><div class="sri-sub">Lock screen pe wapas jao</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Privacy Vault Section -->
+    <div class="set-sec">
+      <div class="set-sec-title">🔐 Privacy</div>
+      <div class="set-card">
+        <div class="set-row" onclick="openPrivacyVault()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#9b59b6,#6c3483)">🔒</div>
+          <div style="flex:1">
+            <div class="sri-title">Privacy Vault</div>
+            <div class="sri-sub">Photos, videos & docs secretly store karo</div>
+          </div>
+          <span class="set-arrow">›</span>
+        </div>
+        <!-- Activity Tracking Toggle -->
+        <div class="dw-toggle-row" onclick="toggleActivityTracking()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#1565c0,#0d47a1)">📊</div>
+          <div style="flex:1">
+            <div class="sri-title">Activity Tracking</div>
+            <div class="sri-sub" id="actTrackSub">${(localStorage.getItem('aos_activity_tracking')||'1')==='1'?'On — Behaviour aur usage track ho raha hai':'Off — Koi bhi tracking band hai'}</div>
+          </div>
+          <div class="dw-switch ${(localStorage.getItem('aos_activity_tracking')||'1')==='1'?'on':''}" id="actTrackSwitch">
+            <div class="dw-switch-knob"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOS & Emergency Section -->
+    <div class="set-sec">
+      <div class="set-sec-title">🆘 SOS &amp; Emergency</div>
+      <div class="set-card">
+
+        <!-- 1. Open Apeion SOS App -->
+        <div class="set-row" onclick="openApp('apeiosos','Apeion SOS')">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#c0392b,#7b241c)">🆘</div>
+          <div style="flex:1"><div class="sri-title">Apeion SOS</div><div class="sri-sub">Emergency SOS app kholo</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+
+        <!-- 2. Medical Information -->
+        <div class="set-row" onclick="_openMedicalInfo()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#e74c3c,#c0392b)">🏥</div>
+          <div style="flex:1"><div class="sri-title">Medical Information</div><div class="sri-sub">Blood group, allergies, medicines save karo</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+
+        <!-- 3. Emergency Contacts -->
+        <div class="set-row" onclick="_openEmergencyContacts()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#8e44ad,#6c3483)">📞</div>
+          <div style="flex:1"><div class="sri-title">Emergency Contacts</div><div class="sri-sub" id="sosContactCountSub">SOS press hone par yeh log alert honge</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+
+        <!-- 4. Location Services -->
+        <div class="dw-toggle-row" onclick="_toggleLocationSvc()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#1a6e3c,#0d4a26)">📍</div>
+          <div style="flex:1">
+            <div class="sri-title">Location Services</div>
+            <div class="sri-sub" id="locSvcSub">${localStorage.getItem('aos_locsvc')==='1'?'On — SOS ke saath GPS location bhi jayegi':'Off — Location share nahi hogi'}</div>
+          </div>
+          <div class="dw-switch ${localStorage.getItem('aos_locsvc')==='1'?'on':''}" id="locSvcSwitch"><div class="dw-switch-knob"></div></div>
+        </div>
+
+        <!-- 5. Crisis Alert -->
+        <div class="set-row" onclick="window.open('https://www.google.com/search?q=latest+crisis+news+india+today','_blank')">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#d35400,#a04000)">🚨</div>
+          <div style="flex:1"><div class="sri-title">Crisis Alert</div><div class="sri-sub">Latest crisis news Google par dekhein</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+
+        <!-- 6. Earthquake Alerts -->
+        <div class="set-row" onclick="window.open('https://www.google.com/search?q=latest+earthquake+alert+today','_blank')">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#795548,#4e342e)">🌍</div>
+          <div style="flex:1"><div class="sri-title">Earthquake Alerts</div><div class="sri-sub">Recent earthquake activity dekhein</div></div>
+          <span class="set-arrow">›</span>
+        </div>
+
+        <!-- 8. Silence Notifications While Driving -->
+        <div class="dw-toggle-row" onclick="_toggleDrivingMode()">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#1565c0,#0d47a1)">🚗</div>
+          <div style="flex:1">
+            <div class="sri-title">Silence While Driving</div>
+            <div class="sri-sub" id="drivingModeSub">${localStorage.getItem('aos_driving')==='1'?'On — Driving mein notifications mute hain':'Off — Notifications normal hain'}</div>
+          </div>
+          <div class="dw-switch ${localStorage.getItem('aos_driving')==='1'?'on':''}" id="drivingModeSwitch"><div class="dw-switch-knob"></div></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Theme Section -->
+    <div class="set-sec">
+      <div class="set-sec-title">🎨 Theme</div>
+      <div class="set-card">
+        <div style="padding:12px 16px 4px;font-size:12px;color:rgba(130,95,20,.65);font-weight:500;">Apna theme choose karo</div>
+        <div class="theme-row">
+          <div class="theme-chip ${(localStorage.getItem('aos_theme')||'dark')==='dark'?'sel':''}" onclick="setTheme('dark')">
+            <div class="theme-chip-dot" style="background:linear-gradient(135deg,#1a0a2e,#3d1c6e)"></div>
+            <span style="color:rgba(130,95,20,.8);">Dark</span>
+          </div>
+          <div class="theme-chip ${(localStorage.getItem('aos_theme')||'dark')==='light'?'sel':''}" onclick="setTheme('light')">
+            <div class="theme-chip-dot" style="background:linear-gradient(135deg,#f5f5ff,#e0e8ff)"></div>
+            <span style="color:rgba(130,95,20,.8);">Light</span>
+          </div>
+          <div class="theme-chip ${(localStorage.getItem('aos_theme')||'dark')==='amoled'?'sel':''}" onclick="setTheme('amoled')">
+            <div class="theme-chip-dot" style="background:#000;border:1px solid rgba(255,255,255,.2)"></div>
+            <span style="color:rgba(130,95,20,.8);">AMOLED</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="set-sec">
+      <div class="set-sec-title">🌐 About</div>
+      <div class="set-card">
+        <div class="set-row" id="aboutTapRow" onclick="_aboutTap()" style="cursor:pointer;user-select:none;">
+          <div class="set-row-ico" style="background:linear-gradient(135deg,#c9a84c,#a07820)">🌸</div>
+          <div style="flex:1"><div class="sri-title">Apeion OS</div><div class="sri-sub" id="aboutTapSub">Built by Aahil • Apeion Studio</div></div>
+        </div>
+        <div id="devOptionsBtnRow" style="display:none;">
+          <div class="set-row" onclick="_openDevOptions()" style="cursor:pointer;">
+            <div class="set-row-ico" style="background:linear-gradient(135deg,#212121,#424242)">🛠️</div>
+            <div style="flex:1"><div class="sri-title">Developer Options</div><div class="sri-sub">Advanced system controls</div></div>
+            <span class="set-arrow">›</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gold divider footer -->
+    <div style="text-align:center;padding:12px 0 4px;">
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.4) 30%,rgba(201,168,76,.4) 70%,transparent);margin-bottom:12px;"></div>
+      <div style="font-size:10px;color:rgba(160,120,30,.45);letter-spacing:.15em;font-weight:600;text-transform:uppercase;">Apeion OS • Made with ✦</div>
+    </div>
+  `;
+}
+
+/* ══════════════════════════════════════════
+   SOS & EMERGENCY SETTINGS (verbatim)
+══════════════════════════════════════════ */
+function _toggleLocationSvc(){
+  const val = localStorage.getItem('aos_locsvc')==='1' ? '0' : '1';
+  localStorage.setItem('aos_locsvc', val);
+  const sw = document.getElementById('locSvcSwitch');
+  const sub = document.getElementById('locSvcSub');
+  if(sw) sw.classList.toggle('on', val==='1');
+  if(sub) sub.textContent = val==='1' ? 'On — SOS ke saath GPS location bhi jayegi' : 'Off — Location share nahi hogi';
+  if(val==='1'){
+    navigator.geolocation && navigator.geolocation.getCurrentPosition(
+      ()=>toast('📍 Location Services ON'),
+      ()=>toast('⚠️ Location permission do browser settings mein')
+    );
+  } else { toast('📍 Location Services OFF'); }
+}
+
+/* ── 2. Driving Mode toggle ── */
+function _toggleDrivingMode(){
+  const val = localStorage.getItem('aos_driving')==='1' ? '0' : '1';
+  localStorage.setItem('aos_driving', val);
+  const sw = document.getElementById('drivingModeSwitch');
+  const sub = document.getElementById('drivingModeSub');
+  if(sw) sw.classList.toggle('on', val==='1');
+  if(sub) sub.textContent = val==='1' ? 'On — Driving mein notifications mute hain' : 'Off — Notifications normal hain';
+  if(val==='1' && 'Notification' in window){
+    Notification.requestPermission();
+    toast('🚗 Driving Mode ON — Notifications silent');
+  } else { toast('🚗 Driving Mode OFF'); }
+}
+
+
+/* ══════════════════════════════════════════
+   MEDICAL INFORMATION MODAL
+══════════════════════════════════════════ */
+function _openMedicalInfo(){
+  const saved = (() => { try{ return JSON.parse(localStorage.getItem('aos_medical')||'{}'); }catch(e){ return {}; } })();
+  const overlay = document.createElement('div');
+  overlay.id = '_medOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);backdrop-filter:blur(12px);display:flex;align-items:flex-end;justify-content:center;';
+  overlay.innerHTML = `
+    <div style="width:100%;max-width:480px;background:linear-gradient(160deg,#fdf8f0,#faf3e4);border-radius:28px 28px 0 0;padding:20px 18px 36px;max-height:88vh;overflow-y:auto;">
+      <div style="width:36px;height:4px;background:rgba(0,0,0,.15);border-radius:2px;margin:0 auto 18px;"></div>
+      <div style="font-size:17px;font-weight:700;color:#7a5000;margin-bottom:16px;">🏥 Medical Information</div>
+      ${_medField('Name','medName','text','Apna naam',saved.name||'')}
+      ${_medField('Blood Group','medBlood','text','A+, B-, O+...',saved.blood||'')}
+      ${_medField('Allergies','medAllergy','text','Penicillin, Dust...',saved.allergy||'')}
+      ${_medField('Current Medicines','medMeds','text','Metformin 500mg...',saved.meds||'')}
+      ${_medField('Medical Conditions','medCond','text','Diabetes, BP...',saved.cond||'')}
+      ${_medField('Doctor Name','medDoc','text','Dr. Sharma',saved.doc||'')}
+      ${_medField('Doctor Phone','medDocPh','tel','+91 98765 43210',saved.docph||'')}
+      ${_medField('Insurance / Policy No.','medIns','text','Policy number',saved.ins||'')}
+      ${_medField('Notes','medNotes','text','Extra jaankari',saved.notes||'')}
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button onclick="_saveMedical()" style="flex:1;padding:14px;background:linear-gradient(135deg,#c9a84c,#e8c96a);border:none;border-radius:16px;font-size:15px;font-weight:700;color:#5a3a00;cursor:pointer;">💾 Save</button>
+        <button onclick="document.getElementById('_medOverlay').remove()" style="flex:1;padding:14px;background:rgba(0,0,0,.08);border:none;border-radius:16px;font-size:15px;font-weight:600;color:#555;cursor:pointer;">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+function _medField(label,id,type,placeholder,value){
+  return `<div style="margin-bottom:12px;">
+    <div style="font-size:11px;font-weight:700;color:rgba(130,95,20,.7);letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px;">${label}</div>
+    <input id="${id}" type="${type}" placeholder="${placeholder}" value="${value}" style="width:100%;padding:11px 14px;border:1.5px solid rgba(201,168,76,.3);border-radius:12px;background:rgba(255,255,255,.7);font-size:14px;font-family:'Outfit',sans-serif;outline:none;color:#2a1a0a;">
+  </div>`;
+}
+function _saveMedical(){
+  const get = id => (document.getElementById(id)||{}).value||'';
+  const data = { name:get('medName'), blood:get('medBlood'), allergy:get('medAllergy'), meds:get('medMeds'), cond:get('medCond'), doc:get('medDoc'), docph:get('medDocPh'), ins:get('medIns'), notes:get('medNotes') };
+  localStorage.setItem('aos_medical', JSON.stringify(data));
+  document.getElementById('_medOverlay')&&document.getElementById('_medOverlay').remove();
+  toast('✅ Medical information save ho gayi!');
+}
+
+/* ══════════════════════════════════════════
+   EMERGENCY CONTACTS MANAGER
+══════════════════════════════════════════ */
+function _getSosContacts(){ try{ return JSON.parse(localStorage.getItem('aos_sos_contacts')||'[]'); }catch(e){ return []; } }
+function _saveSosContacts(arr){ localStorage.setItem('aos_sos_contacts', JSON.stringify(arr)); }
+
+function _openEmergencyContacts(){
+  _renderECModal();
+}
+function _renderECModal(){
+  const existing = document.getElementById('_ecOverlay');
+  if(existing) existing.remove();
+  const contacts = _getSosContacts();
+  const overlay = document.createElement('div');
+  overlay.id = '_ecOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:300;background:rgba(0,0,0,.7);backdrop-filter:blur(12px);display:flex;align-items:flex-end;justify-content:center;';
+  const list = contacts.length ? contacts.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid rgba(201,168,76,.15);">
+      <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#8e44ad,#6c3483);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">👤</div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;color:#2a1a0a;">${c.name}</div>
+        <div style="font-size:12px;color:rgba(100,70,20,.6);">${c.phone}</div>
+      </div>
+      <button onclick="_deleteEC(${i})" style="width:32px;height:32px;border:none;background:rgba(220,30,30,.12);border-radius:50%;font-size:16px;cursor:pointer;">🗑️</button>
+    </div>`).join('') : '<div style="text-align:center;padding:20px;color:rgba(100,70,20,.45);font-size:13px;">Abhi koi emergency contact nahi hai</div>';
+
+  overlay.innerHTML = `
+    <div style="width:100%;max-width:480px;background:linear-gradient(160deg,#fdf8f0,#faf3e4);border-radius:28px 28px 0 0;padding:20px 18px 36px;max-height:88vh;overflow-y:auto;">
+      <div style="width:36px;height:4px;background:rgba(0,0,0,.15);border-radius:2px;margin:0 auto 18px;"></div>
+      <div style="font-size:17px;font-weight:700;color:#7a5000;margin-bottom:4px;">📞 Emergency Contacts</div>
+      <div style="font-size:11px;color:rgba(130,95,20,.55);margin-bottom:16px;">SOS press hone par in sabko SMS + location jayegi</div>
+      <div id="_ecList">${list}</div>
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(201,168,76,.2);">
+        <div style="font-size:12px;font-weight:700;color:rgba(130,95,20,.7);margin-bottom:10px;">➕ Naya Contact</div>
+        <input id="_ecName" type="text" placeholder="Naam (Mummy, Papa...)" style="width:100%;padding:11px 14px;margin-bottom:8px;border:1.5px solid rgba(201,168,76,.3);border-radius:12px;background:rgba(255,255,255,.7);font-size:14px;font-family:'Outfit',sans-serif;outline:none;color:#2a1a0a;">
+        <input id="_ecPhone" type="tel" placeholder="+91 98765 43210" style="width:100%;padding:11px 14px;margin-bottom:12px;border:1.5px solid rgba(201,168,76,.3);border-radius:12px;background:rgba(255,255,255,.7);font-size:14px;font-family:'Outfit',sans-serif;outline:none;color:#2a1a0a;">
+        <button onclick="_addEC()" style="width:100%;padding:13px;background:linear-gradient(135deg,#c9a84c,#e8c96a);border:none;border-radius:14px;font-size:14px;font-weight:700;color:#5a3a00;cursor:pointer;">Save Contact</button>
+      </div>
+      <button onclick="document.getElementById('_ecOverlay').remove()" style="width:100%;margin-top:10px;padding:12px;background:rgba(0,0,0,.06);border:none;border-radius:14px;font-size:14px;font-weight:600;color:#666;cursor:pointer;">Close</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e=>{ if(e.target===overlay) overlay.remove(); });
+}
+function _addEC(){
+  const name = (document.getElementById('_ecName')||{}).value||'';
+  const phone = (document.getElementById('_ecPhone')||{}).value||'';
+  if(!name.trim()||!phone.trim()){ toast('⚠️ Naam aur phone dono bharo'); return; }
+  const arr = _getSosContacts();
+  arr.push({name:name.trim(), phone:phone.trim()});
+  _saveSosContacts(arr);
+  toast(`✅ ${name} emergency contacts mein add ho gaya!`);
+  _renderECModal();
+  _updateSosContactSub();
+}
+function _deleteEC(i){
+  const arr = _getSosContacts();
+  arr.splice(i,1);
+  _saveSosContacts(arr);
+  _renderECModal();
+  _updateSosContactSub();
+}
+function _updateSosContactSub(){
+  const sub = document.getElementById('sosContactCountSub');
+  if(!sub) return;
+  const c = _getSosContacts().length;
+  sub.textContent = c>0 ? `${c} contact${c>1?'s':''} save hain — SOS par alert honge` : 'SOS press hone par yeh log alert honge';
+}
+
+/* ══════════════════════════════════════════
+   CHANGE PIN — 3-Step Flow (verbatim)
+══════════════════════════════════════════ */
+let _cpStep = 0;       // 0 = current PIN, 1 = new PIN, 2 = confirm new PIN
+let _cpInput = '';     // current input buffer
+let _cpNewPin = '';    // stores new PIN after step 1
+
+const _cpStepConfig = [
+  { title: 'Change PIN',    label: 'Step 1 of 3 — Current PIN dalo',    btnText: 'Verify' },
+  { title: 'New PIN Set',   label: 'Step 2 of 3 — Naya 4-digit PIN',    btnText: 'Next'   },
+  { title: 'Confirm PIN',   label: 'Step 3 of 3 — PIN dobara dalo',     btnText: 'Confirm' },
+];
+
+function openChangePinModal(){
+  _cpStep = 0; _cpInput = ''; _cpNewPin = '';
+  _cpRenderStep();
+  // Hide success, show main
+  document.getElementById('cpSuccessWrap').classList.remove('show');
+  document.getElementById('cpMainContent').style.display = '';
+  document.getElementById('changePinModal').classList.add('open');
+}
+
+function closeChangePinModal(){
+  document.getElementById('changePinModal').classList.remove('open');
+  _cpStep = 0; _cpInput = ''; _cpNewPin = '';
+}
+
+function _cpRenderStep(){
+  const cfg = _cpStepConfig[_cpStep];
+  // Title & label
+  const titleEl = document.getElementById('cpTitle');
+  const labelEl = document.getElementById('cpStepLabel');
+  if(titleEl) titleEl.textContent = cfg.title;
+  if(labelEl) labelEl.textContent = cfg.label;
+  // OK button text
+  const okBtn = document.getElementById('cpOkBtn');
+  if(okBtn){ okBtn.textContent = cfg.btnText; okBtn.classList.remove('ready'); }
+  // Step pills
+  for(let i = 0; i < 3; i++){
+    const pip = document.getElementById('cpPip' + i);
+    if(!pip) continue;
+    pip.classList.remove('active','done');
+    if(i < _cpStep) pip.classList.add('done');
+    else if(i === _cpStep) pip.classList.add('active');
+  }
+  // Dots reset
+  _cpUpdateDots();
+  // Error clear
+  _cpShowErr('');
+}
+
+function _cpNum(n){
+  if(_cpInput.length >= 4) return;
+  if(navigator.vibrate) navigator.vibrate(8);
+  _cpInput += String(n);
+  _cpUpdateDots();
+  // Auto-proceed when 4 digits entered — enable OK button
+  if(_cpInput.length === 4){
+    const okBtn = document.getElementById('cpOkBtn');
+    if(okBtn) okBtn.classList.add('ready');
+  }
+}
+
+function _cpDel(){
+  _cpInput = _cpInput.slice(0, -1);
+  _cpUpdateDots();
+  _cpShowErr('');
+  const okBtn = document.getElementById('cpOkBtn');
+  if(okBtn) okBtn.classList.remove('ready');
+}
+
+function _cpUpdateDots(){
+  for(let i = 0; i < 4; i++){
+    const d = document.getElementById('cpd' + i);
+    if(!d) continue;
+    d.classList.remove('filled','error','success');
+    if(i < _cpInput.length) d.classList.add('filled');
+  }
+}
+
+function _cpDotsError(){
+  for(let i = 0; i < 4; i++){
+    const d = document.getElementById('cpd' + i);
+    if(d){ d.classList.remove('filled','success'); d.classList.add('error'); }
+  }
+  const dots = document.getElementById('cpDots');
+  if(dots){ dots.style.animation='none'; setTimeout(()=>{ dots.style.animation='cpDotShake .42s ease'; },10); }
+  if(navigator.vibrate) navigator.vibrate([40,20,40,20,40]);
+}
+
+function _cpDotsSuccess(){
+  for(let i = 0; i < 4; i++){
+    const d = document.getElementById('cpd' + i);
+    if(d){ d.classList.remove('filled','error'); d.classList.add('success'); }
+  }
+  if(navigator.vibrate) navigator.vibrate([10,5,20,5,30]);
+}
+
+function _cpShowErr(msg){
+  const e = document.getElementById('cpErr');
+  if(!e) return;
+  if(msg){ e.textContent = msg; e.classList.add('show'); }
+  else{ e.textContent = ''; e.classList.remove('show'); }
+}
+
+async function _cpOk(){
+  if(_cpInput.length < 4){ _cpShowErr('4 digits dalo'); return; }
+
+  if(_cpStep === 0){
+    // ── Step 0: Verify current PIN ──
+    const salt = ApeionSecurity._deviceSalt();
+    const inputHash = await ApeionSecurity.sha256(_cpInput + salt);
+    const storedHash = localStorage.getItem('aos_pin_hash') || '';
+    const ok = ApeionSecurity._constTimeEqual(inputHash, storedHash);
+    if(!ok){
+      _cpDotsError();
+      _cpShowErr('❌ Galat current PIN. Dobara try karo.');
+      _cpInput = '';
+      setTimeout(()=>{ _cpUpdateDots(); _cpShowErr(''); const ob=document.getElementById('cpOkBtn'); if(ob) ob.classList.remove('ready'); }, 1400);
+      return;
+    }
+    // Correct — go to step 1
+    _cpDotsSuccess();
+    setTimeout(()=>{
+      _cpStep = 1; _cpInput = ''; _cpNewPin = '';
+      _cpRenderStep();
+    }, 500);
+
+  } else if(_cpStep === 1){
+    // ── Step 1: Save new PIN, go to confirm ──
+    _cpNewPin = _cpInput;
+    _cpDotsSuccess();
+    setTimeout(()=>{
+      _cpStep = 2; _cpInput = '';
+      _cpRenderStep();
+    }, 400);
+
+  } else if(_cpStep === 2){
+    // ── Step 2: Confirm new PIN ──
+    if(_cpInput !== _cpNewPin){
+      _cpDotsError();
+      _cpShowErr('❌ PINs match nahi karte. Dobara dalo.');
+      _cpInput = '';
+      setTimeout(()=>{ _cpUpdateDots(); _cpShowErr(''); const ob=document.getElementById('cpOkBtn'); if(ob) ob.classList.remove('ready'); }, 1400);
+      return;
+    }
+    // ── Save new hash to localStorage ──
+    const salt = ApeionSecurity._deviceSalt();
+    const newHash = await ApeionSecurity.sha256(_cpNewPin + salt);
+    localStorage.setItem('aos_pin_hash', newHash);
+    // Update settings sub-text
+    const sub = document.getElementById('pinLockSub');
+    if(sub) sub.textContent = 'PIN successfully changed ✓';
+    // Show success state
+    _cpDotsSuccess();
+    setTimeout(()=>{
+      document.getElementById('cpMainContent').style.display = 'none';
+      document.getElementById('cpSuccessWrap').classList.add('show');
+      // Auto-close after 1.8s
+      setTimeout(()=> closeChangePinModal(), 1800);
+    }, 500);
+  }
+}
+
+function toggleWeatherWidget(){
+  const isOn = localStorage.getItem('aos_weather')==='1';
+  const newState = isOn ? '0' : '1';
+  localStorage.setItem('aos_weather', newState);
+  const ww = document.getElementById('weatherWidget');
+  const sw = document.getElementById('wwToggleSwitch');
+  const sub = document.getElementById('wwToggleSub');
+  if(ww) ww.style.display = newState==='1' ? 'flex' : 'none';
+  if(sw) sw.classList.toggle('on', newState==='1');
+  if(sub) sub.textContent = newState==='1'
+    ? 'On — Home screen pe dikh raha hai'
+    : 'Off — Home screen pe nahi dikhega';
+  if(newState==='1' && typeof fetchWeather==='function') fetchWeather();
+  toast(newState==='1' ? '🌤️ Weather Widget ON' : '🌤️ Weather Widget OFF');
+}
+
+/* ══════════════════════════════════════════
+   THEME SYSTEM
+══════════════════════════════════════════ */
+function setTheme(t){
+  localStorage.setItem('aos_theme', t);
+  document.body.classList.remove('theme-light','theme-amoled');
+  if(t==='light') document.body.classList.add('theme-light');
+  if(t==='amoled') document.body.classList.add('theme-amoled');
+  toast('🎨 Theme: '+t.charAt(0).toUpperCase()+t.slice(1));
+  renderSettings(); // refresh to show selected chip
+}
+function loadTheme(){
+  const t = localStorage.getItem('aos_theme') || 'dark';
+  setTheme(t);
+}
+loadTheme();
+
+function toggleKeepAlive(){
+  const isOn = localStorage.getItem('aos_keep_alive') === '1';
+  const newState = isOn ? '0' : '1';
+  localStorage.setItem('aos_keep_alive', newState);
+
+  const sw  = document.getElementById('keepAliveSwitch');
+  const sub = document.getElementById('keepAliveSub');
+  if(sw)  sw.classList.toggle('on', newState==='1');
+  if(sub) sub.textContent = newState==='1'
+    ? 'On — App band karne ke baad bhi background mein chalu rehta hai'
+    : 'Off — App close hone pe puri tarah band ho jaata hai';
+
+  if(newState==='0'){
+    // User ne OFF kiya — abhi jo app loaded hai use bhi clear karo
+    const frame = document.getElementById('appFrame');
+    const appWin = document.getElementById('appWindow');
+    const appOpen = appWin ? appWin.classList.contains('open') : false;
+    if(!appOpen && frame){
+      frame.src = 'about:blank';
+      frame.dataset.loadedId = '';
+    }
+    toast('⚡ Background Mode OFF — Apps ab puri tarah band honge');
+  } else {
+    toast('⚡ Background Mode ON — Apps background mein chalu rahenge');
+  }
+}
+
+/* ══════════════════════════════════════════
+   3D ENGINE TOGGLE
+   ON  → Three.js maze requestAnimationFrame chal raha hai
+   OFF → cancelAnimationFrame + canvas display:none = GPU zero usage
+         Engine ka scene/code intact rehta hai — seedha resume karta hai
+══════════════════════════════════════════ */
+function toggle3DEngine(){
+  const isOn = localStorage.getItem('aos_3d_engine') === '1';
+  const newState = isOn ? '0' : '1';
+  localStorage.setItem('aos_3d_engine', newState);
+
+  const sw  = document.getElementById('eng3dSwitch');
+  const sub = document.getElementById('eng3dSub');
+  if(sw)  sw.classList.toggle('on', newState === '1');
+  if(sub) sub.textContent = newState === '1'
+    ? 'On — Three.js maze background mein chal raha hai'
+    : 'Off — GPU/CPU zero use, engine paused hai';
+
+  if(window._rayEngine){
+    if(newState === '1'){
+      window._rayEngine.start();
+      toast('🎮 3D Engine ON — Maze chal raha hai');
+    } else {
+      window._rayEngine.stop();
+      toast('🎮 3D Engine OFF — GPU free, battery save ho rahi hai');
+    }
+  }
+}
+
+/* ══════════════════════════════════════════
+   ACTIVITY TRACKING TOGGLE
+   ON  → _logAnomaly, DOM check, worker sab kaam karte hain
+   OFF → koi bhi behaviour/usage data log/collect nahi hota
+   localStorage key: 'aos_activity_tracking' ('1'=on, '0'=off)
+   Default: '1' (on) — agar user ne kabhi set nahi kiya
+══════════════════════════════════════════ */
+function toggleActivityTracking(){
+  const current = localStorage.getItem('aos_activity_tracking') || '1';
+  const newState = current === '1' ? '0' : '1';
+  localStorage.setItem('aos_activity_tracking', newState);
+
+  const sw  = document.getElementById('actTrackSwitch');
+  const sub = document.getElementById('actTrackSub');
+  if (sw)  sw.classList.toggle('on', newState === '1');
+  if (sub) sub.textContent = newState === '1'
+    ? 'On — Behaviour aur usage track ho raha hai'
+    : 'Off — Koi bhi tracking band hai';
+
+  if (newState === '0') {
+    toast('📊 Activity Tracking OFF — Koi data collect nahi hoga');
+  } else {
+    toast('📊 Activity Tracking ON — Usage monitor ho raha hai');
+  }
+}
+
+
+function toggleTimeFmt(){
+  const next=localStorage.getItem('aos_timefmt')==='12'?'24':'12';
+  localStorage.setItem('aos_timefmt',next);
+  if(typeof tick==='function') tick();
+  const sub=document.getElementById('timeFmtSub');
+  if(sub) sub.textContent=next==='12'?'12-hour (6:52 AM)':'24-hour (18:52)';
+  toast('🕐 Time format: '+(next==='12'?'12-hour':'24-hour'));
+}
+
+/* ══════════════════════════════════════════
+   DYNAMIC WALLPAPER TOGGLE — simplified real version
+   (schedule uses the lightweight WPS gradients above,
+   instead of the full canvas-art time-schedule engine)
+══════════════════════════════════════════ */
+let _dwInterval=null;
+function getDynamicWp(){
+  const h=new Date().getHours();
+  return WPS[h % WPS.length];
+}
+function applyDynamicWp(){
+  if(localStorage.getItem('aos_dynwp')!=='1') return;
+  applyHomeWp(getDynamicWp());
+}
+function toggleDynamicWp(){
+  const isOn = localStorage.getItem('aos_dynwp')==='1';
+  const newState = isOn?'0':'1';
+  localStorage.setItem('aos_dynwp', newState);
+  const sw=document.getElementById('dwSwitch');
+  const sub=document.getElementById('dwSub');
+  if(sw) sw.classList.toggle('on', newState==='1');
+  if(sub) sub.textContent = newState==='1' ? 'On — Time ke saath wallpaper change hota hai' : 'Off — Manual wallpaper use ho raha hai';
+  if(newState==='1'){
+    applyDynamicWp();
+    stopDynamicWpTimer();
+    _dwInterval=setInterval(()=>{ if(localStorage.getItem('aos_dynwp')==='1') applyDynamicWp(); }, 60*1000);
+    toast('🎨 Dynamic Wallpaper ON!');
+  } else {
+    stopDynamicWpTimer();
+    toast('🎨 Dynamic Wallpaper OFF');
+  }
+}
+function stopDynamicWpTimer(){ if(_dwInterval){ clearInterval(_dwInterval); _dwInterval=null; } }
+if(localStorage.getItem('aos_dynwp')==='1'){ applyDynamicWp(); _dwInterval=setInterval(()=>{ if(localStorage.getItem('aos_dynwp')==='1') applyDynamicWp(); },60*1000); }
+
+/* ══════════════════════════════════════════
+   DYNAMIC ISLAND TOGGLE — simplified (localStorage flag only;
+   actual island UI lives in the full Apeion OS home screen)
+══════════════════════════════════════════ */
+function toggleDynamicIslandSetting(){
+  const isOn = localStorage.getItem('aos_dynamic_island')==='1';
+  const newState = isOn?'0':'1';
+  localStorage.setItem('aos_dynamic_island', newState);
+  const sw=document.getElementById('diSettingSwitch');
+  const sub=document.getElementById('diSettingSub');
+  if(sw) sw.classList.toggle('on', newState==='1');
+  if(sub) sub.textContent = newState==='1' ? 'On — Top par notification island dikhega' : 'Off — Dynamic Island hidden hai';
+  toast(newState==='1' ? '🏝️ Dynamic Island ON' : '🏝️ Dynamic Island OFF');
+}
+
+/* ══════════════════════════════════════════
+   OS-LEVEL STUBS
+   In yeh full OS subsystems ka apna hissa hai (Lock Screen,
+   Privacy Vault, App Launcher/iframe system) — Settings app
+   akele inhe hoot nahi kar sakta. Honest stub, koi fake nahi.
+══════════════════════════════════════════ */
+function lockOS(){
+  closeSettings();
+  toast('🔒 Iske liye Apeion OS ka pura Lock Screen chahiye');
+}
+function openPrivacyVault(){
+  toast('🔐 Privacy Vault ek alag bada module hai — poore OS mein available hai');
+}
+function openApp(id,label){
+  toast('📱 "'+(label||id)+'" ko open karne ke liye poora Apeion OS chahiye');
+}
+
+/* ══════════════════════════════════════════
+   DEVELOPER OPTIONS SYSTEM
+   Security:
+   • 8 taps on About card → PIN modal
+   • PIN = same as lock screen PIN (SHA-256 verified)
+   • _devUnlocked = in-memory only — never localStorage
+   • _devState{} = in-memory only — tab close resets everything
+   • To re-lock: 8 taps again → PIN → lock
+══════════════════════════════════════════ */
+
+let _devUnlocked = false;
+// All dev setting values — NO localStorage writes ever
+const _devState = {
+  usbDebug:false, wirelessDebug:false, stayAwake:false,
+  showTouches:false, pointerLocation:false,
+  rtl:false, layoutBounds:false, forceDark:false,
+  grid4col:false, highContrast:false,
+  animScale:false, noAnim:false, transitionDraw:false,
+  gpuOverdraw:false, hwAccel:false, fpsOverlay:false,
+  networkLogs:false,
+  bgProcessLimit:false, memStats:false, perfMode:false,
+  dontKeepActivities:false, mockLocation:false, storageQuota:false,
+  onScreenConsole:false, elementInspector:false, errorCatcher:false, jankDetector:false
+};
+let _fpsInterval=null, _memInterval=null, _touchDots=[], _pointerBar=null;
+let _networkLogsOrig=null;
+
+/* ── About card tap counter ── */
+let _aboutTaps = 0;
+let _aboutTapTimer = null;
+
+function _aboutTap(){
+  _aboutTaps++;
+  clearTimeout(_aboutTapTimer);
+  _aboutTapTimer = setTimeout(()=>{ _aboutTaps=0; }, 3000);
+
+  const sub = document.getElementById('aboutTapSub');
+  const left = 8 - _aboutTaps;
+
+  if(_aboutTaps < 8){
+    if(left <= 4 && sub) sub.textContent = left > 0 ? `${left} aur tap karo developer ke liye…` : '';
+    if(navigator.vibrate) navigator.vibrate(10);
+    return;
+  }
+
+  // 8 taps complete
+  _aboutTaps = 0;
+  clearTimeout(_aboutTapTimer);
+  if(sub) sub.textContent = 'Built by Aahil • Apeion Studio';
+  if(navigator.vibrate) navigator.vibrate([15,8,15,8,30]);
+  _openDevPinModal(_devUnlocked ? 'lock' : 'unlock');
+}
+
+/* ── PIN Modal ── */
+let _devPin = '';
+let _devPinAction = 'unlock';
+
+function _openDevPinModal(action){
+  _devPinAction = action;
+  _devPin = '';
+  _devUpdateDots();
+  const err = document.getElementById('devPinErr');
+  if(err){ err.classList.remove('show'); err.textContent='Wrong PIN. Try again.'; }
+  document.getElementById('devPinModal').classList.add('open');
+}
+function _closeDevPin(){
+  _devPin='';
+  _devUpdateDots();
+  document.getElementById('devPinModal').classList.remove('open');
+}
+function _devNum(n){
+  if(_devPin.length>=4) return;
+  if(navigator.vibrate) navigator.vibrate(8);
+  _devPin += String(n);
+  _devUpdateDots();
+  if(_devPin.length===4) setTimeout(_devCheckPin,180);
+}
+function _devDel(){
+  _devPin=_devPin.slice(0,-1);
+  _devUpdateDots();
+  const e=document.getElementById('devPinErr'); if(e) e.classList.remove('show');
+}
+function _devUpdateDots(){
+  for(let i=0;i<4;i++){
+    const d=document.getElementById('dp'+i);
+    if(!d) return;
+    d.classList.toggle('filled', i<_devPin.length);
+    d.classList.remove('error');
+  }
+}
+async function _devCheckPin(){
+  const storedHash = localStorage.getItem('aos_pin_hash');
+  const salt = ApeionSecurity._deviceSalt();
+  const inputHash = await ApeionSecurity.sha256(_devPin + salt);
+  const ok = ApeionSecurity._constTimeEqual(inputHash, storedHash||'');
+
+  if(!ok){
+    for(let i=0;i<4;i++){
+      const d=document.getElementById('dp'+i);
+      if(d){ d.classList.remove('filled'); d.classList.add('error'); }
+    }
+    const err=document.getElementById('devPinErr');
+    if(err){ err.textContent='❌ Galat PIN hai.'; err.classList.add('show'); }
+    if(navigator.vibrate) navigator.vibrate([40,20,40,20,40]);
+    _devPin='';
+    setTimeout(()=>{
+      _devUpdateDots();
+      const e=document.getElementById('devPinErr'); if(e) e.classList.remove('show');
+    },1200);
+    return;
+  }
+
+  // ✅ Correct
+  if(navigator.vibrate) navigator.vibrate([10,5,20]);
+  _closeDevPin();
+
+  if(_devPinAction==='unlock'){
+    _devUnlocked=true;
+    const btn=document.getElementById('devOptionsBtnRow');
+    if(btn) btn.style.display='block';
+    toast('🛠️ Developer Options unlocked!');
+  } else {
+    _devUnlocked=false;
+    _closeDevOptions();
+    const btn=document.getElementById('devOptionsBtnRow');
+    if(btn) btn.style.display='none';
+    _devResetAll();
+    toast('🔒 Developer Options locked.');
+  }
+}
+
+/* ══════════════════════════════════════════
+   PINCH GESTURE → QUICK MENU
+   Do ungliyon ko paas laane se menu opens
+══════════════════════════════════════════ */
+(function pinchGesture(){
+  let startDist=null;
+  let menuShown=false;
+  const PINCH_THRESHOLD=55;
+  function dist(a,b){return Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);}
+  function midpoint(a,b){return{x:(a.clientX+b.clientX)/2,y:(a.clientY+b.clientY)/2};}
+
+  document.addEventListener('touchstart',e=>{
+    const hs=document.getElementById('homeScreen');
+    if(!hs||hs.classList.contains('hidden')) return;
+    if(document.getElementById('appWindow').classList.contains('open')) return;
+    if(document.getElementById('appDrawer').classList.contains('open')) return;
+    if(document.getElementById('notifPanel').classList.contains('open')) return;
+    if(e.touches.length===2){
+      startDist=dist(e.touches[0],e.touches[1]);
+      menuShown=false;
+    }
+  },{passive:true});
+
+  document.addEventListener('touchmove',e=>{
+    if(e.touches.length!==2||startDist===null) return;
+    const hs=document.getElementById('homeScreen');
+    if(!hs||hs.classList.contains('hidden')) return;
+    const curDist=dist(e.touches[0],e.touches[1]);
+    const delta=startDist-curDist;
+    if(delta>PINCH_THRESHOLD&&!menuShown){
+      menuShown=true;
+      const mid=midpoint(e.touches[0],e.touches[1]);
+      _showPinchMenu(mid.x,mid.y);
+    }
+  },{passive:true});
+
+  document.addEventListener('touchend',e=>{
+    if(e.touches.length<2){startDist=null; menuShown=false;}
+  },{passive:true});
+})();
+
+function _showPinchMenu(x,y){
+  const menu=document.getElementById('pinchMenu');
+  const overlay=document.getElementById('pinchOverlay');
+  if(!menu) return;
+  const W=window.innerWidth,H=window.innerHeight;
+  const mW=220,mH=230;
+  let left=x-mW/2,top=y-mH/2;
+  left=Math.max(10,Math.min(left,W-mW-10));
+  top=Math.max(70,Math.min(top,H-mH-90));
+  menu.style.left=left+'px';menu.style.top=top+'px';
+  menu.classList.add('show');
+  overlay.classList.add('show');
+  if(navigator.vibrate) navigator.vibrate([10,5,20]);
+}
+function closePinchMenu(){
+  const m=document.getElementById('pinchMenu');
+  const o=document.getElementById('pinchOverlay');
+  if(m) m.classList.remove('show');
+  if(o) o.classList.remove('show');
+}
+document.getElementById('pinchOverlay')?.addEventListener('click',closePinchMenu);
+
+/* ══════════════════════════════════════════
+   WIDGET PICKER
+══════════════════════════════════════════ */
+function openWidgetPicker(){
+  _widgetState.weather=localStorage.getItem('aos_weather')==='1';
+  _widgetState.clock=document.querySelector('.date-widget')&&document.querySelector('.date-widget').style.display!=='none';
+  _syncWidgetBadges();
+  document.getElementById('widgetPicker').classList.add('open');
+}
+function closeWidgetPicker(){ document.getElementById('widgetPicker').classList.remove('open'); }
+
+const _widgetState={clock:true,weather:false,battery:false,calendar:false,steps:false,quote:false,music:false};
+
+function toggleWidget(id){
+  _widgetState[id]=!_widgetState[id];
+  if(navigator.vibrate) navigator.vibrate(10);
+  _syncWidgetBadges();
+  _applyWidget(id,_widgetState[id]);
+}
+function _syncWidgetBadges(){
+  Object.keys(_widgetState).forEach(id=>{
+    const card=document.getElementById('wc-'+id);
+    if(card) card.classList.toggle('added',!!_widgetState[id]);
+  });
+}
+function _applyWidget(id,val){
+  if(id==='weather'){
+    localStorage.setItem('aos_weather',val?'1':'0');
+    const ww=document.getElementById('weatherWidget');
+    if(ww) ww.style.display=val?'':'none';
+    if(val) initWeather&&initWeather();
+    toast(val?'🌤️ Weather widget ON':'🌤️ Weather widget OFF');
+  } else if(id==='clock'){
+    const dw=document.querySelector('.date-widget');
+    if(dw) dw.style.display=val?'':'none';
+    toast(val?'🕐 Clock widget ON':'🕐 Clock widget OFF');
+  } else if(id==='battery'){
+    const bw=document.getElementById('_battWidget');
+    if(val&&!bw) _createBattWidget(); else if(!val&&bw) bw.remove();
+    toast(val?'🔋 Battery widget ON':'🔋 Battery widget OFF');
+  } else if(id==='calendar'){
+    const cw=document.getElementById('_calWidget');
+    if(val&&!cw) _createCalWidget(); else if(!val&&cw) cw.remove();
+    toast(val?'📅 Calendar widget ON':'📅 Calendar widget OFF');
+  } else if(id==='steps'){
+    const sw=document.getElementById('_stepsWidget');
+    if(val&&!sw) _createStepsWidget(); else if(!val&&sw) sw.remove();
+    toast(val?'👟 Steps widget ON':'👟 Steps widget OFF');
+  } else if(id==='quote'){
+    const qw=document.getElementById('_quoteWidget');
+    if(val&&!qw) _createQuoteWidget(); else if(!val&&qw) qw.remove();
+    toast(val?'💭 Quote widget ON':'💭 Quote widget OFF');
+  } else if(id==='music'){
+    const mw=document.getElementById('_musicWidget');
+    if(val&&!mw) _createMusicWidget(); else if(!val&&mw) mw.remove();
+    toast(val?'🎵 Music widget ON':'🎵 Music widget OFF');
+  }
+}
+function _getPageOneTop(){return document.querySelector('.page-one-top');}
+function _createBattWidget(){
+  const p=_getPageOneTop(); if(!p) return;
+  const w=document.createElement('div'); w.id='_battWidget';
+  w.style.cssText='display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.1);backdrop-filter:blur(20px);border-radius:18px;padding:10px 16px;border:1px solid rgba(255,255,255,.18);margin:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:pointer;';
+  w.innerHTML='<span style="font-size:22px;" id="_bwEmoji">🔋</span><div style="flex:1;"><div style="color:white;font-size:17px;font-weight:300;" id="_bwPct">--%</div><div style="color:rgba(255,255,255,.5);font-size:9px;letter-spacing:.08em;text-transform:uppercase;">Battery</div></div>';
+  p.appendChild(w);
+  if(navigator.getBattery) navigator.getBattery().then(b=>{
+    const pct=Math.round(b.level*100);
+    const pe=document.getElementById('_bwPct'); if(pe) pe.textContent=pct+'%';
+    const em=document.getElementById('_bwEmoji'); if(em) em.textContent=b.charging?'⚡':(pct<=20?'🪫':'🔋');
+  });
+}
+function _createCalWidget(){
+  const p=_getPageOneTop(); if(!p) return;
+  const w=document.createElement('div'); w.id='_calWidget';
+  const now=new Date();
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const mons=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  w.style.cssText='background:rgba(255,255,255,.1);backdrop-filter:blur(20px);border-radius:18px;padding:10px 16px;border:1px solid rgba(255,255,255,.18);margin:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.2);display:flex;align-items:center;gap:12px;cursor:pointer;';
+  w.innerHTML=`<span style="font-size:26px;">📅</span><div><div style="color:white;font-size:15px;font-weight:600;">${days[now.getDay()]}, ${now.getDate()} ${mons[now.getMonth()]}</div><div style="color:rgba(255,255,255,.45);font-size:9px;letter-spacing:.08em;text-transform:uppercase;">Calendar</div></div>`;
+  p.appendChild(w);
+}
+function _createStepsWidget(){
+  const p=_getPageOneTop(); if(!p) return;
+  const w=document.createElement('div'); w.id='_stepsWidget';
+  w.style.cssText='display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.1);backdrop-filter:blur(20px);border-radius:18px;padding:10px 16px;border:1px solid rgba(255,255,255,.18);margin:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:pointer;';
+  w.innerHTML='<span style="font-size:22px;">👟</span><div style="flex:1;"><div style="color:white;font-size:17px;font-weight:300;">4,208</div><div style="color:rgba(255,255,255,.5);font-size:9px;letter-spacing:.08em;text-transform:uppercase;">Steps Today</div></div><div style="color:rgba(255,255,255,.35);font-size:10px;">Goal: 10k</div>';
+  p.appendChild(w);
+}
+function _createQuoteWidget(){
+  const p=_getPageOneTop(); if(!p) return;
+  const quotes=['"Jo karo, poori taaqat se karo."','"Mushkilon se mat ghabrana."','"Sapne woh nahi jo sote mein dekhte hain..."','"Zindagi ek safar hai — chalte raho."','"Mehnat ka koi shortcut nahi."'];
+  const q=quotes[new Date().getDate()%quotes.length];
+  const w=document.createElement('div'); w.id='_quoteWidget';
+  w.style.cssText='background:rgba(255,255,255,.1);backdrop-filter:blur(20px);border-radius:18px;padding:12px 16px;border:1px solid rgba(255,255,255,.18);margin:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:pointer;';
+  w.innerHTML=`<div style="color:rgba(255,255,255,.85);font-size:12px;font-style:italic;line-height:1.55;">${q}</div><div style="color:rgba(255,255,255,.3);font-size:8.5px;margin-top:5px;letter-spacing:.12em;text-transform:uppercase;">💭 Quote of the Day</div>`;
+  p.appendChild(w);
+}
+function _createMusicWidget(){
+  const p=_getPageOneTop(); if(!p) return;
+  const w=document.createElement('div'); w.id='_musicWidget';
+  w.style.cssText='display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.1);backdrop-filter:blur(20px);border-radius:18px;padding:11px 16px;border:1px solid rgba(255,255,255,.18);margin:4px 0;box-shadow:0 4px 16px rgba(0,0,0,.2);cursor:pointer;';
+  w.innerHTML='<div style="width:42px;height:42px;border-radius:11px;background:linear-gradient(135deg,#9b59b6,#6c3483);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,.3);">🎵</div><div style="flex:1;"><div style="color:rgba(255,255,255,.65);font-size:13px;font-weight:500;">Nothing playing</div><div style="color:rgba(255,255,255,.35);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:1px;">Music Player</div></div><div style="display:flex;gap:6px;font-size:20px;"><span>⏮</span><span>▶️</span><span>⏭</span></div>';
+  p.appendChild(w);
+}
+
+/* ══════════════════════════════════════════
+   STYLE QUICK PANEL
+══════════════════════════════════════════ */
+function openStyleQuickPanel(){
+  _sqUpdateTheme();
+  document.getElementById('styleQuickPanel').classList.add('open');
+}
+function closeStyleQuickPanel(){document.getElementById('styleQuickPanel').classList.remove('open');}
+function _sqUpdateTheme(){
+  const cur=localStorage.getItem('aos_theme')||'dark';
+  ['dark','light','amoled'].forEach(t=>{
+    const key='sqTheme'+t.charAt(0).toUpperCase()+t.slice(1);
+    const el=document.getElementById(key);
+    if(el){
+      el.style.borderColor=cur===t?'rgba(200,80,106,0.85)':'transparent';
+      el.style.background=cur===t?'rgba(200,80,106,0.22)':'rgba(255,255,255,0.07)';
+    }
+  });
+}
+function applyIconSize(val){
+  const size=parseInt(val);
+  document.querySelectorAll('#pagesInner .app-icon-img').forEach(el=>{
+    el.style.width=size+'px'; el.style.height=size+'px';
+  });
+  document.querySelectorAll('#pagesInner .app-icon').forEach(el=>{
+    el.style.width=(size+10)+'px';
+  });
+}
+
+/* ══════════════════════════════════════════
+   LAYOUT PANEL — Grid Cols + Transitions
+══════════════════════════════════════════ */
+function openLayoutPanel(){
+  const cur=parseInt(localStorage.getItem('aos_grid_cols')||'4');
+  document.querySelectorAll('.grid-size-btn').forEach(btn=>{
+    btn.classList.toggle('sel',parseInt(btn.dataset.cols)===cur);
+  });
+  const curTrans=localStorage.getItem('aos_transition')||'slide';
+  document.querySelectorAll('.trans-card').forEach(card=>{
+    card.classList.toggle('sel',card.dataset.trans===curTrans);
+  });
+  document.getElementById('layoutPanel').classList.add('open');
+}
+function closeLayoutPanel(){document.getElementById('layoutPanel').classList.remove('open');}
+
+function setGridCols(n){
+  if(n<4||n>6) return;
+  localStorage.setItem('aos_grid_cols',n);
+  document.querySelectorAll('.grid-size-btn').forEach(btn=>{
+    btn.classList.toggle('sel',parseInt(btn.dataset.cols)===n);
+  });
+  const colStr=`repeat(${n},1fr)`;
+  document.querySelectorAll('.app-grid').forEach(g=>{ g.style.gridTemplateColumns=colStr; });
+  document.querySelector('.drawer-grid')&&(document.querySelector('.drawer-grid').style.gridTemplateColumns=colStr);
+  const sz=n===4?60:n===5?50:42;
+  const iW=n===4?70:n===5?60:52;
+  document.querySelectorAll('#pagesInner .app-icon-img').forEach(el=>{el.style.width=sz+'px';el.style.height=sz+'px';});
+  document.querySelectorAll('#pagesInner .app-icon').forEach(el=>{el.style.width=iW+'px';});
+  if(navigator.vibrate) navigator.vibrate(10);
+  toast(`⊞ Grid: ${n} apps per row`);
+}
+(function(){const n=parseInt(localStorage.getItem('aos_grid_cols')||'4');if(n!==4) setTimeout(()=>setGridCols(n),700);})();
+
+/* ══════════════════════════════════════════
+   PAGE TRANSITION ENGINE
+══════════════════════════════════════════ */
+let _curTransition=localStorage.getItem('aos_transition')||'slide';
+
+function setTransition(name){
+  _curTransition=name;
+  localStorage.setItem('aos_transition',name);
+  document.querySelectorAll('.trans-card').forEach(c=>c.classList.toggle('sel',c.dataset.trans===name));
+  _applyTransitionSetup(name);
+  if(navigator.vibrate) navigator.vibrate(10);
+  toast('✨ Transition: '+name.charAt(0).toUpperCase()+name.slice(1));
+  // Quick preview
+  setTimeout(()=>{const np=curPage<PAGES_DATA.length-1?curPage+1:curPage-1; setPage(np);},300);
+}
+
+function _applyTransitionSetup(name){
+  const po=document.getElementById('pagesOuter');
+  const pi=document.getElementById('pagesInner');
+  const pages=document.querySelectorAll('.pages-inner .page');
+  // Remove all old trans classes + helper classes
+  po.classList.remove('trans-fade','trans-zoom','trans-cube','trans-flip','trans-depth');
+  pages.forEach(p=>{
+    p.style.cssText='';
+    p.classList.remove('active-page','cube-prev','cube-next','flip-prev','depth-behind');
+  });
+  pi.style.transition='';
+  pi.style.transform='';
+
+  if(name==='fade'||name==='zoom'||name==='depth'){
+    po.classList.add('trans-'+name);
+    pi.style.transform='none';
+    if(pages[curPage]) pages[curPage].classList.add('active-page');
+    if(name==='depth' && pages[curPage-1]) pages[curPage-1].classList.add('depth-behind');
+  } else if(name==='cube'){
+    po.classList.add('trans-cube');
+    pi.style.transform='none';
+    pages.forEach((p,i)=>{
+      if(i===curPage) p.classList.add('active-page');
+      else if(i===curPage-1) p.classList.add('cube-prev');
+      else if(i===curPage+1) p.classList.add('cube-next');
+    });
+  } else if(name==='flip'){
+    po.classList.add('trans-flip');
+    pi.style.transform='none';
+    pages.forEach((p,i)=>{
+      if(i===curPage) p.classList.add('active-page');
+      else if(i===curPage-1) p.classList.add('flip-prev');
+    });
+  } else {
+    // slide (default)
+    pi.style.transition='transform .40s cubic-bezier(.22,1,.36,1)';
+    pi.style.transform=`translateX(-${curPage*100}%)`;
+  }
+}
+
+/* Override setPage globally */
+window.setPage=function(n){
+  const prevPage=curPage;
+  curPage=n;
+  const name=_curTransition;
+  const pi=document.getElementById('pagesInner');
+  const pages=document.querySelectorAll('.pages-inner .page');
+  document.querySelectorAll('.pdot').forEach((d,i)=>d.classList.toggle('active',i===n));
+
+  if(name==='fade'){
+    pages.forEach(p=>p.classList.remove('active-page'));
+    if(pages[n]) pages[n].classList.add('active-page');
+
+  } else if(name==='zoom'){
+    pages.forEach(p=>p.classList.remove('active-page','page-exit'));
+    if(pages[prevPage]){
+      pages[prevPage].classList.add('page-exit');
+      setTimeout(()=>pages[prevPage] && pages[prevPage].classList.remove('page-exit'),380);
+    }
+    if(pages[n]) pages[n].classList.add('active-page');
+
+  } else if(name==='depth'){
+    pages.forEach(p=>p.classList.remove('active-page','depth-behind'));
+    if(pages[prevPage]) pages[prevPage].classList.add('depth-behind');
+    setTimeout(()=>pages[prevPage] && pages[prevPage].classList.remove('depth-behind'),450);
+    if(pages[n]) pages[n].classList.add('active-page');
+
+  } else if(name==='cube'){
+    const goingRight = n > prevPage;
+    pages.forEach(p=>p.classList.remove('active-page','cube-prev','cube-next'));
+    // Set outgoing page
+    if(pages[prevPage]){
+      pages[prevPage].classList.add(goingRight ? 'cube-prev' : 'cube-next');
+      setTimeout(()=>pages[prevPage] && pages[prevPage].classList.remove('cube-prev','cube-next'),560);
+    }
+    // Set incoming page — first position it off screen, then animate in
+    if(pages[n]){
+      pages[n].classList.add(goingRight ? 'cube-next' : 'cube-prev');
+      requestAnimationFrame(()=>{
+        requestAnimationFrame(()=>{
+          pages[n].classList.remove('cube-prev','cube-next');
+          pages[n].classList.add('active-page');
+        });
+      });
+    }
+
+  } else if(name==='flip'){
+    const goingRight = n > prevPage;
+    pages.forEach(p=>p.classList.remove('active-page','flip-prev'));
+    if(pages[prevPage]){
+      pages[prevPage].classList.add('flip-prev');
+      setTimeout(()=>pages[prevPage] && pages[prevPage].classList.remove('flip-prev'),580);
+    }
+    if(pages[n]){
+      pages[n].style.transform='rotateY('+(goingRight?'180deg':'-180deg')+')';
+      pages[n].style.opacity='0';
+      pages[n].style.visibility='visible';
+      requestAnimationFrame(()=>{
+        requestAnimationFrame(()=>{
+          pages[n].classList.add('active-page');
+          pages[n].style.transform='';
+          pages[n].style.opacity='';
+          pages[n].style.visibility='';
+        });
+      });
+    }
+
+  } else {
+    // slide
+    pi.style.transform=`translateX(-${n*100}%)`;
+    pi.style.transition='transform .40s cubic-bezier(.22,1,.36,1)';
+  }
+};
+
+// Restore transition on load
+(function(){
+  const t=localStorage.getItem('aos_transition')||'slide';
+  if(t!=='slide') setTimeout(()=>_applyTransitionSetup(t),900);
+})();
+
+/* ── Panel open/close ── */
+function _openDevOptions(){
+  if(!_devUnlocked){ toast('🔒 Pehle 8 baar tap karo'); return; }
+  Object.keys(_devState).forEach(k=>{
+    const sw=document.getElementById('devSw-'+k);
+    if(sw) sw.classList.toggle('on',!!_devState[k]);
+  });
+  document.getElementById('devOptionsPanel').classList.add('open');
+}
+function _closeDevOptions(){
+  document.getElementById('devOptionsPanel').classList.remove('open');
+}
+
+/* ── Toggle ── */
+function _devToggle(key){
+  if(!_devState.hasOwnProperty(key)) return;
+  _devState[key]=!_devState[key];
+  const sw=document.getElementById('devSw-'+key);
+  if(sw) sw.classList.toggle('on',_devState[key]);
+  if(navigator.vibrate) navigator.vibrate(10);
+  _devApply(key,_devState[key]);
+  toast(_devState[key]?`✅ ${key.toUpperCase()} ON`:`⛔ ${key.toUpperCase()} OFF`);
+}
+
+/* ── Apply to DOM — session only ── */
+function _devApply(key,value){
+
+  /* ── RTL ── */
+  if(key==='rtl'){
+    document.documentElement.dir=value?'rtl':'ltr';
+    document.documentElement.style.direction=value?'rtl':'ltr';
+  }
+
+  /* ── USB Debug toast only ── */
+  if(key==='usbDebug'){ if(value) toast('🔌 ADB Debug: Port 5037 simulated'); }
+
+  /* ── Wireless Debug ── */
+  if(key==='wirelessDebug'){ if(value) toast('📡 Wireless ADB: 192.168.1.x:5555'); }
+
+  /* ── Stay Awake: prevent page dimming via WakeLock API ── */
+  if(key==='stayAwake'){
+    if(value && 'wakeLock' in navigator){
+      navigator.wakeLock.request('screen').then(l=>{ window._devWakeLock=l; }).catch(()=>{});
+    } else if(!value && window._devWakeLock){
+      window._devWakeLock.release(); window._devWakeLock=null;
+    }
+  }
+
+  /* ── Show Touches ── */
+  if(key==='showTouches'){
+    if(value){
+      window._devTouchHandler=function(e){
+        Array.from(e.changedTouches).forEach(t=>{
+          const d=document.createElement('div');
+          d.style.cssText=`position:fixed;left:${t.clientX-22}px;top:${t.clientY-22}px;
+            width:44px;height:44px;border-radius:50%;background:rgba(255,60,120,0.42);
+            border:2px solid rgba(255,60,120,0.9);pointer-events:none;z-index:99999;
+            animation:_devTouchFade 0.45s ease forwards;`;
+          document.body.appendChild(d);
+          setTimeout(()=>d.remove(),460);
+        });
+      };
+      let st=document.getElementById('_devTouchStyle');
+      if(!st){st=document.createElement('style');st.id='_devTouchStyle';document.head.appendChild(st);}
+      st.textContent=`@keyframes _devTouchFade{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.6)}}`;
+      document.addEventListener('touchstart',window._devTouchHandler,{passive:true});
+    } else {
+      if(window._devTouchHandler) document.removeEventListener('touchstart',window._devTouchHandler);
+    }
+  }
+
+  /* ── Pointer Location ── */
+  if(key==='pointerLocation'){
+    if(value){
+      if(!_pointerBar){
+        _pointerBar=document.createElement('div');
+        _pointerBar.id='_devPointerBar';
+        _pointerBar.style.cssText=`position:fixed;top:0;left:0;right:0;height:22px;
+          background:rgba(0,0,0,0.82);color:#0f0;font-family:monospace;
+          font-size:11px;z-index:99998;display:flex;align-items:center;
+          justify-content:center;pointer-events:none;letter-spacing:.05em;`;
+        document.body.appendChild(_pointerBar);
+      }
+      window._devPtrMove=function(e){
+        const t=e.touches?e.touches[0]:e;
+        if(_pointerBar) _pointerBar.textContent=`X:${Math.round(t.clientX)}  Y:${Math.round(t.clientY)}  W:${window.innerWidth}  H:${window.innerHeight}`;
+      };
+      document.addEventListener('touchmove',window._devPtrMove,{passive:true});
+      document.addEventListener('mousemove',window._devPtrMove);
+    } else {
+      if(_pointerBar){ _pointerBar.remove(); _pointerBar=null; }
+      if(window._devPtrMove){ document.removeEventListener('touchmove',window._devPtrMove); document.removeEventListener('mousemove',window._devPtrMove); }
+    }
+  }
+
+  /* ── Layout Bounds ── */
+  if(key==='layoutBounds'){
+    let st=document.getElementById('_devBoundsStyle');
+    if(!st){st=document.createElement('style');st.id='_devBoundsStyle';document.head.appendChild(st);}
+    st.textContent=value?`*{outline:1px solid rgba(255,0,100,0.35)!important;}`:'';
+  }
+
+  /* ── Force Dark Mode ── */
+  if(key==='forceDark'){
+    let st=document.getElementById('_devDarkStyle');
+    if(!st){st=document.createElement('style');st.id='_devDarkStyle';document.head.appendChild(st);}
+    st.textContent=value?`
+      #appWindow,#settingsApp,#appDrawer,#notifPanel{
+        filter:invert(1) hue-rotate(180deg)!important;
+      }`:'' ;
+  }
+
+  /* ── High Contrast ── */
+  if(key==='highContrast'){
+    let st=document.getElementById('_devHCStyle');
+    if(!st){st=document.createElement('style');st.id='_devHCStyle';document.head.appendChild(st);}
+    st.textContent=value?`*{text-shadow:none!important;-webkit-text-stroke:0.4px currentColor;font-weight:600!important;}`:'';
+  }
+
+  /* ── Slow Animation ── */
+  if(key==='animScale'){
+    let st=document.getElementById('_devAnimStyle');
+    if(!st){st=document.createElement('style');st.id='_devAnimStyle';document.head.appendChild(st);}
+    st.textContent=value?`*,*::before,*::after{transition-duration:700ms!important;animation-duration:2.2s!important;}`:'';
+    if(value && _devState.noAnim){ _devState.noAnim=false; const sw=document.getElementById('devSw-noAnim'); if(sw) sw.classList.remove('on'); }
+  }
+
+  /* ── No Animation ── */
+  if(key==='noAnim'){
+    let st=document.getElementById('_devNoAnimStyle');
+    if(!st){st=document.createElement('style');st.id='_devNoAnimStyle';document.head.appendChild(st);}
+    st.textContent=value?`*,*::before,*::after{transition:none!important;animation:none!important;}`:'';
+    if(value && _devState.animScale){ _devState.animScale=false; const sw=document.getElementById('devSw-animScale'); if(sw) sw.classList.remove('on'); }
+  }
+
+  /* ── Surface Updates (flash repaint areas) ── */
+  if(key==='transitionDraw'){
+    let st=document.getElementById('_devRepaintStyle');
+    if(!st){st=document.createElement('style');st.id='_devRepaintStyle';document.head.appendChild(st);}
+    st.textContent=value?`
+      @keyframes _devRepaint{0%{box-shadow:inset 0 0 0 2px rgba(255,200,0,0.7)}100%{box-shadow:none}}
+      .screen,#appWindow,#notifPanel,#appDrawer{animation:_devRepaint 1.2s ease infinite!important;}`:'' ;
+  }
+
+  /* ── GPU Overdraw ── */
+  if(key==='gpuOverdraw'){
+    let st=document.getElementById('_devGpuStyle');
+    if(!st){st=document.createElement('style');st.id='_devGpuStyle';document.head.appendChild(st);}
+    st.textContent=value?`
+      #wallpaper,#lockWallpaper{outline:3px solid rgba(0,0,255,0.55)!important;}
+      .screen{outline:3px solid rgba(0,200,80,0.55)!important;}
+      #notifPanel,#appDrawer,#appWindow,#settingsApp{outline:3px solid rgba(255,165,0,0.65)!important;}
+      #devOptionsPanel{outline:3px solid rgba(255,0,0,0.75)!important;}
+      body::after{content:"GPU Overdraw ON";position:fixed;bottom:90px;left:50%;transform:translateX(-50%);
+        background:rgba(220,30,30,0.9);color:white;font-size:11px;font-weight:700;
+        padding:4px 14px;border-radius:20px;z-index:9999;pointer-events:none;font-family:monospace;}`:'' ;
+  }
+
+  /* ── HW Accel ── */
+  if(key==='hwAccel'){
+    let st=document.getElementById('_devHWStyle');
+    if(!st){st=document.createElement('style');st.id='_devHWStyle';document.head.appendChild(st);}
+    st.textContent=value?`.screen,.app-icon-img,#appWindow,#notifPanel,#appDrawer{transform:translateZ(0);will-change:transform;}`:'';
+  }
+
+  /* ── FPS Overlay ── */
+  if(key==='fpsOverlay'){
+    const existing=document.getElementById('_devFpsBox');
+    if(value){
+      if(!existing){
+        const b=document.createElement('div');
+        b.id='_devFpsBox';
+        b.style.cssText=`position:fixed;top:28px;right:10px;background:rgba(0,0,0,0.75);
+          color:#0f0;font-family:monospace;font-size:12px;font-weight:700;
+          padding:2px 8px;border-radius:6px;z-index:99997;pointer-events:none;
+          border:1px solid rgba(0,255,0,0.3);`;
+        b.textContent='FPS: --';
+        document.body.appendChild(b);
+      }
+      let last=performance.now(), frames=0;
+      _fpsInterval=setInterval(()=>{
+        const now=performance.now();
+        const fps=Math.round(frames*1000/(now-last));
+        const box=document.getElementById('_devFpsBox');
+        if(box) box.textContent=`FPS: ${fps}`;
+        frames=0; last=now;
+      },500);
+      window._devFpsRAF=function(){frames++;if(_devState.fpsOverlay)requestAnimationFrame(window._devFpsRAF);};
+      requestAnimationFrame(window._devFpsRAF);
+    } else {
+      if(existing) existing.remove();
+      clearInterval(_fpsInterval);
+    }
+  }
+
+  /* ── Network Logs ── */
+  if(key==='networkLogs'){
+    if(value){
+      _networkLogsOrig=window.fetch;
+      window.fetch=function(...args){
+        console.log('%c[DEV NET]','color:#0af;font-weight:bold',args[0]);
+        return _networkLogsOrig.apply(this,args);
+      };
+    } else {
+      if(_networkLogsOrig) window.fetch=_networkLogsOrig;
+    }
+  }
+
+  /* ── Background Process Limit ── */
+  if(key==='bgProcessLimit'){
+    if(value){
+      // Override setInterval to cap at minimum 2000ms when not in focus
+      window._devBGOrig=window.setInterval;
+      window.setInterval=function(fn,ms,...a){
+        const safems=document.hidden?Math.max(ms||0,2000):ms;
+        return window._devBGOrig(fn,safems,...a);
+      };
+      toast('⚙️ Background timers throttled to 2s min');
+    } else {
+      if(window._devBGOrig) window.setInterval=window._devBGOrig;
+    }
+  }
+
+  /* ── Memory Stats ── */
+  if(key==='memStats'){
+    const existing=document.getElementById('_devMemBox');
+    if(value && performance.memory){
+      if(!existing){
+        const b=document.createElement('div');
+        b.id='_devMemBox';
+        b.style.cssText=`position:fixed;top:28px;left:10px;background:rgba(0,0,0,0.75);
+          color:#fa0;font-family:monospace;font-size:11px;font-weight:700;
+          padding:2px 8px;border-radius:6px;z-index:99997;pointer-events:none;
+          border:1px solid rgba(255,170,0,0.3);`;
+        document.body.appendChild(b);
+      }
+      _memInterval=setInterval(()=>{
+        const m=performance.memory;
+        const used=Math.round(m.usedJSHeapSize/1048576);
+        const total=Math.round(m.jsHeapSizeLimit/1048576);
+        const box=document.getElementById('_devMemBox');
+        if(box) box.textContent=`MEM: ${used}/${total}MB`;
+      },1000);
+    } else {
+      if(existing) existing.remove();
+      clearInterval(_memInterval);
+      if(!performance.memory) toast('⚠️ Memory API unavailable on this browser');
+    }
+  }
+
+  /* ── Perf Mode ── */
+  if(key==='perfMode'){
+    let st=document.getElementById('_devPerfStyle');
+    if(!st){st=document.createElement('style');st.id='_devPerfStyle';document.head.appendChild(st);}
+    st.textContent=value?`
+      *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+        filter:none!important;box-shadow:none!important;text-shadow:none!important;}
+      #wallpaper{background:#111!important;}`:'' ;
+    if(value) toast('🚀 Perf Mode ON: blur/shadows disabled');
+  }
+
+  /* ── Don't Keep Activities ── */
+  if(key==='dontKeepActivities'){
+    if(value){
+      // Close app window when user navigates away
+      window._devDKAhandler=function(){
+        const aw=document.getElementById('appWindow');
+        if(aw&&aw.classList.contains('open')) closeApp();
+      };
+      document.addEventListener('visibilitychange',window._devDKAhandler);
+    } else {
+      if(window._devDKAhandler) document.removeEventListener('visibilitychange',window._devDKAhandler);
+    }
+  }
+
+  /* ── Mock Location ── */
+  if(key==='mockLocation'){
+    if(value){
+      window._devOrigGeo=navigator.geolocation?navigator.geolocation.getCurrentPosition.bind(navigator.geolocation):null;
+      const mockGeoDescriptor={
+        getCurrentPosition:function(success){
+          success({coords:{latitude:28.6139,longitude:77.2090,accuracy:10},timestamp:Date.now()});
+        },
+        watchPosition:function(success){
+          success({coords:{latitude:28.6139,longitude:77.2090,accuracy:10},timestamp:Date.now()});
+          return 0;
+        },
+        clearWatch:function(){}
+      };
+      try{ Object.defineProperty(navigator,'geolocation',{value:mockGeoDescriptor,configurable:true}); }catch(e){}
+      toast('📍 Mock Location: New Delhi (28.6°N, 77.2°E)');
+    } else {
+      toast('📍 Mock Location disabled');
+    }
+  }
+
+  /* ── Grid 4-col ── */
+  if(key==='grid4col'){
+    const cols=value?'repeat(4,1fr)':'';
+    const drawerGrid=document.querySelector('.drawer-grid');
+    if(drawerGrid) drawerGrid.style.gridTemplateColumns=cols;
+    document.querySelectorAll('.app-grid').forEach(g=>{ g.style.gridTemplateColumns=cols; });
+  }
+
+  /* ── On-Screen Console: real console override ── */
+  if(key==='onScreenConsole'){
+    if(value){
+      if(!document.getElementById('_devConsoleBox')){
+        const box=document.createElement('div');
+        box.id='_devConsoleBox';
+        box.style.cssText=`position:fixed;left:0;right:0;bottom:0;height:180px;background:rgba(10,10,14,0.94);
+          color:#0f0;font-family:monospace;font-size:11px;z-index:99996;overflow-y:auto;
+          border-top:1px solid rgba(0,255,120,0.4);padding:6px 8px;-webkit-overflow-scrolling:touch;`;
+        const header=document.createElement('div');
+        header.style.cssText='position:sticky;top:0;background:rgba(10,10,14,0.94);display:flex;justify-content:space-between;align-items:center;color:rgba(255,255,255,.5);font-size:10px;margin-bottom:4px;letter-spacing:.05em;padding-bottom:4px;';
+        header.innerHTML='<span>📟 ON-SCREEN CONSOLE</span><span id="_devConsoleClear" style="cursor:pointer;color:#0af;font-weight:700;">CLEAR</span>';
+        box.appendChild(header);
+        const logWrap=document.createElement('div'); logWrap.id='_devConsoleLog';
+        box.appendChild(logWrap);
+        document.body.appendChild(box);
+        document.getElementById('_devConsoleClear').addEventListener('click',()=>{ logWrap.innerHTML=''; });
+      }
+      if(!window._devConsoleOrig){
+        window._devConsoleOrig={log:console.log,warn:console.warn,error:console.error,info:console.info};
+        ['log','warn','error','info'].forEach(level=>{
+          console[level]=function(...args){
+            window._devConsoleOrig[level].apply(console,args);
+            _devConsoleWrite(level,args);
+          };
+        });
+      }
+    } else {
+      const box=document.getElementById('_devConsoleBox'); if(box) box.remove();
+      if(window._devConsoleOrig){
+        console.log=window._devConsoleOrig.log; console.warn=window._devConsoleOrig.warn;
+        console.error=window._devConsoleOrig.error; console.info=window._devConsoleOrig.info;
+        window._devConsoleOrig=null;
+      }
+    }
+  }
+
+  /* ── Element Inspector: tap to inspect ── */
+  if(key==='elementInspector'){
+    if(value){
+      window._devInspectHandler=function(e){
+        if(e.target.closest && e.target.closest('#_devInspectBox')) return;
+        e.preventDefault(); e.stopPropagation();
+        _devShowInspect(e.target);
+      };
+      document.addEventListener('click',window._devInspectHandler,true);
+      toast('🔍 Kisi bhi element ko tap karo — inspect hoga');
+    } else {
+      if(window._devInspectHandler) document.removeEventListener('click',window._devInspectHandler,true);
+      const box=document.getElementById('_devInspectBox'); if(box) box.remove();
+      const hi=document.getElementById('_devInspectHi'); if(hi) hi.remove();
+    }
+  }
+
+  /* ── Auto Error Catcher: real crash overlay ── */
+  if(key==='errorCatcher'){
+    if(value){
+      window._devErrHandler=function(e){
+        _devShowCrash(e.message||'Script Error',`${e.filename||''}:${e.lineno||0}:${e.colno||0}`,e.error&&e.error.stack);
+      };
+      window._devRejHandler=function(e){
+        const reason=e.reason;
+        _devShowCrash('Unhandled Promise Rejection',String((reason&&reason.message)||reason||''),reason&&reason.stack);
+      };
+      window.addEventListener('error',window._devErrHandler);
+      window.addEventListener('unhandledrejection',window._devRejHandler);
+      toast('🚨 Error Catcher ON — crash pe auto overlay dikhega');
+    } else {
+      if(window._devErrHandler) window.removeEventListener('error',window._devErrHandler);
+      if(window._devRejHandler) window.removeEventListener('unhandledrejection',window._devRejHandler);
+      const box=document.getElementById('_devCrashBox'); if(box) box.remove();
+    }
+  }
+
+  /* ── Jank Detector: real PerformanceObserver longtask ── */
+  if(key==='jankDetector'){
+    if(value){
+      if('PerformanceObserver' in window){
+        try{
+          window._devJankObserver=new PerformanceObserver((list)=>{
+            list.getEntries().forEach(entry=>{ _devJankShow(Math.round(entry.duration)); });
+          });
+          window._devJankObserver.observe({entryTypes:['longtask']});
+          toast('🐢 Jank Detector ON — 50ms+ block track honge');
+        }catch(e){
+          toast('⚠️ Longtask API is browser mein support nahi hai');
+        }
+      } else {
+        toast('⚠️ PerformanceObserver unavailable');
+      }
+    } else {
+      if(window._devJankObserver){ window._devJankObserver.disconnect(); window._devJankObserver=null; }
+      const box=document.getElementById('_devJankBox'); if(box) box.remove();
+    }
+  }
+}
+
+/* ── On-Screen Console: write a line ── */
+function _devConsoleWrite(level,args){
+  const logWrap=document.getElementById('_devConsoleLog');
+  if(!logWrap) return;
+  const colors={log:'#0f0',warn:'#fa0',error:'#f55',info:'#0af'};
+  const line=document.createElement('div');
+  line.style.cssText=`color:${colors[level]||'#0f0'};white-space:pre-wrap;word-break:break-word;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.06);`;
+  const text=args.map(a=>{
+    try{ return typeof a==='object'?JSON.stringify(a):String(a); }catch(e){ return String(a); }
+  }).join(' ');
+  const time=new Date().toLocaleTimeString('en-IN',{hour12:false});
+  line.textContent=`[${time}] ${text}`;
+  logWrap.appendChild(line);
+  logWrap.scrollTop=logWrap.scrollHeight;
+  while(logWrap.children.length>200) logWrap.removeChild(logWrap.firstChild);
+}
+
+/* ── Element Inspector: show info bottom sheet ── */
+function _devShowInspect(el){
+  let box=document.getElementById('_devInspectBox');
+  if(!box){
+    box=document.createElement('div');
+    box.id='_devInspectBox';
+    box.style.cssText=`position:fixed;left:8px;right:8px;bottom:8px;max-height:45%;overflow-y:auto;
+      background:rgba(10,10,14,0.96);border:1px solid rgba(0,200,255,0.4);border-radius:12px;
+      padding:12px;color:#fff;font-family:monospace;font-size:11px;z-index:99997;
+      box-shadow:0 8px 24px rgba(0,0,0,.5);-webkit-overflow-scrolling:touch;`;
+    document.body.appendChild(box);
+  }
+  const cs=getComputedStyle(el);
+  const rect=el.getBoundingClientRect();
+  const classes=(el.className&&typeof el.className==='string'&&el.className.trim())?('.'+el.className.trim().split(/\s+/).join('.')):'';
+  box.innerHTML=`
+    <div style="color:#0cf;font-weight:700;margin-bottom:6px;">🔍 &lt;${el.tagName.toLowerCase()}${el.id?'#'+el.id:''}${classes}&gt;</div>
+    <div>size: ${Math.round(rect.width)}×${Math.round(rect.height)}px</div>
+    <div>position: x:${Math.round(rect.left)} y:${Math.round(rect.top)}</div>
+    <div>font: ${cs.fontSize} / ${cs.fontWeight} / color ${cs.color}</div>
+    <div>background: ${cs.backgroundColor}</div>
+    <div>padding: ${cs.padding} &nbsp; margin: ${cs.margin}</div>
+    <div>display: ${cs.display} &nbsp; position: ${cs.position}</div>
+    <div style="margin-top:6px;color:rgba(255,255,255,.4);">Path: ${_devElPath(el)}</div>
+  `;
+  const prevHi=document.getElementById('_devInspectHi'); if(prevHi) prevHi.remove();
+  const hi=document.createElement('div'); hi.id='_devInspectHi';
+  hi.style.cssText=`position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;
+    background:rgba(0,200,255,0.22);border:1px solid rgba(0,200,255,0.8);pointer-events:none;z-index:99996;`;
+  document.body.appendChild(hi);
+  setTimeout(()=>{ if(hi&&hi.parentNode) hi.remove(); },900);
+  if(navigator.vibrate) navigator.vibrate(8);
+}
+function _devElPath(el){
+  const path=[]; let node=el;
+  while(node && node.nodeType===1 && path.length<5){
+    let sel=node.tagName.toLowerCase();
+    if(node.id) sel+='#'+node.id;
+    path.unshift(sel);
+    node=node.parentElement;
+  }
+  return path.join(' \u203a ');
+}
+
+/* ── Auto Error Catcher: crash overlay ── */
+function _devShowCrash(title,loc,stack){
+  let box=document.getElementById('_devCrashBox');
+  if(box) box.remove();
+  box=document.createElement('div');
+  box.id='_devCrashBox';
+  box.style.cssText=`position:fixed;left:10px;right:10px;top:50%;transform:translateY(-50%);
+    max-height:70%;overflow-y:auto;background:rgba(30,0,0,0.96);border:1px solid rgba(255,60,60,0.6);
+    border-radius:14px;padding:16px;color:#fff;font-family:monospace;font-size:11.5px;z-index:99999;
+    box-shadow:0 12px 40px rgba(0,0,0,.6);-webkit-overflow-scrolling:touch;`;
+  box.innerHTML=`
+    <div style="color:#f55;font-weight:700;font-size:13px;margin-bottom:8px;">🚨 ${title}</div>
+    <div style="color:rgba(255,255,255,.7);margin-bottom:8px;word-break:break-all;">${loc||''}</div>
+    ${stack?`<div style="white-space:pre-wrap;color:rgba(255,180,180,.8);font-size:10.5px;border-top:1px solid rgba(255,255,255,.1);padding-top:8px;">${stack}</div>`:''}
+    <div style="text-align:right;margin-top:12px;">
+      <span id="_devCrashCopy" style="color:#0af;margin-right:16px;cursor:pointer;font-weight:700;">COPY</span>
+      <span id="_devCrashClose" style="color:#faa;cursor:pointer;font-weight:700;">DISMISS</span>
+    </div>
+  `;
+  document.body.appendChild(box);
+  document.getElementById('_devCrashClose').addEventListener('click',()=>box.remove());
+  document.getElementById('_devCrashCopy').addEventListener('click',()=>{
+    navigator.clipboard.writeText(`${title}\n${loc}\n${stack||''}`).then(()=>toast('📋 Crash log copied!')).catch(()=>toast('❌ Clipboard denied'));
+  });
+  if(navigator.vibrate) navigator.vibrate([40,20,40]);
+}
+
+/* ── Jank Detector: floating badge ── */
+function _devJankShow(ms){
+  let box=document.getElementById('_devJankBox');
+  if(!box){
+    box=document.createElement('div');
+    box.id='_devJankBox';
+    box.style.cssText=`position:fixed;bottom:70px;right:10px;background:rgba(255,60,60,0.85);
+      color:#fff;font-family:monospace;font-size:11px;font-weight:700;padding:5px 10px;
+      border-radius:8px;z-index:99997;pointer-events:none;transition:opacity .3s;`;
+    document.body.appendChild(box);
+    box._count=0;
+  }
+  box._count=(box._count||0)+1;
+  box.textContent=`🐢 Jank: ${ms}ms (×${box._count})`;
+  box.style.opacity='1';
+  clearTimeout(box._fadeTimer);
+  box._fadeTimer=setTimeout(()=>{ if(box) box.style.opacity='0.35'; },2000);
+}
+
+/* ── Action buttons (non-toggle) ── */
+function _devAction(action){
+  if(action==='clearCache'){
+    if(!confirm('⚠️ Saara app data delete hoga! Confirm?')) return;
+    try{ localStorage.clear(); sessionStorage.clear(); }catch(e){}
+    try{ indexedDB.databases().then(dbs=>dbs.forEach(db=>indexedDB.deleteDatabase(db.name))); }catch(e){}
+    toast('🗑️ Cache cleared! Page reload ho raha hai…');
+    setTimeout(()=>location.reload(),1200);
+  }
+  if(action==='copyLogs'){
+    const logs=window._devCaughtErrors||[];
+    const text=logs.length?logs.join('\n'):'No errors caught yet. Console open karo ya koi error trigger karo.';
+    navigator.clipboard.writeText(text).then(()=>toast('📋 Logs copied!')).catch(()=>toast('❌ Clipboard denied'));
+  }
+  if(action==='appInfo'){
+    const msg=`Active dev state:\n`+Object.entries(_devState).filter(([,v])=>v).map(([k])=>`✅ ${k}`).join('\n')||'Koi bhi option ON nahi hai.';
+    alert(msg);
+  }
+  if(action==='showStorageQuota'){
+    const panel=document.getElementById('storageQuotaPanel');
+    if(!panel) return;
+    if(panel.style.display==='none'){
+      panel.style.display='block';
+      _updateStorageQuotaInfo();
+    } else {
+      panel.style.display='none';
+    }
+  }
+  if(action==='showStorageViewer'){
+    const panel=document.getElementById('storageViewerPanel');
+    if(!panel) return;
+    if(panel.style.display==='none'){
+      panel.style.display='block';
+      _renderStorageViewer();
+    } else {
+      panel.style.display='none';
+    }
+  }
+}
+
+/* ── LocalStorage / IndexedDB Viewer ── */
+async function _renderStorageViewer(){
+  const list=document.getElementById('storageViewerList');
+  if(!list) return;
+  const keys=Object.keys(localStorage);
+  let html=`<div style="color:rgba(255,255,255,.5);font-size:10px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px;">localStorage (${keys.length} keys)</div>`;
+  if(!keys.length){
+    html+='<div style="color:rgba(255,255,255,.4);font-size:12px;">Koi localStorage key nahi hai.</div>';
+  } else {
+    html+=keys.map(k=>{
+      const v=localStorage.getItem(k)||'';
+      const short=v.length>60?v.slice(0,60)+'…':v;
+      const esc=k.replace(/'/g,"\\'");
+      return `<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);">
+        <div style="color:#7fd;font-size:11.5px;font-weight:700;font-family:monospace;word-break:break-all;">${k}</div>
+        <div style="color:rgba(255,255,255,.65);font-size:11px;font-family:monospace;word-break:break-all;margin:3px 0 6px;">${short||'<empty>'}</div>
+        <div style="display:flex;gap:16px;">
+          <span onclick="_devEditStorageKey('${esc}')" style="color:#0af;font-size:11px;font-weight:700;cursor:pointer;">EDIT</span>
+          <span onclick="_devDeleteStorageKey('${esc}')" style="color:#f66;font-size:11px;font-weight:700;cursor:pointer;">DELETE</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  list.innerHTML=html+'<div style="color:rgba(255,255,255,.4);font-size:11px;margin-top:10px;">📦 IndexedDB loading…</div>';
+  if(indexedDB.databases){
+    try{
+      const dbs=await indexedDB.databases();
+      let idbHtml=`<div style="color:rgba(255,255,255,.5);font-size:10px;letter-spacing:.05em;text-transform:uppercase;margin:12px 0 6px;">IndexedDB (${dbs.length} databases)</div>`;
+      idbHtml+=dbs.length
+        ? dbs.map(db=>`<div style="padding:5px 0;font-family:monospace;font-size:11.5px;color:#7fd;">📦 ${db.name} <span style="color:rgba(255,255,255,.4);">(v${db.version})</span></div>`).join('')
+        : '<div style="color:rgba(255,255,255,.4);font-size:12px;">Koi database nahi hai.</div>';
+      list.innerHTML=html+idbHtml;
+    }catch(e){
+      list.innerHTML=html+'<div style="color:rgba(255,255,255,.4);font-size:11px;margin-top:10px;">⚠️ IndexedDB list nahi mil payi.</div>';
+    }
+  }
+}
+function _devEditStorageKey(k){
+  const cur=localStorage.getItem(k);
+  const val=prompt(`Edit value for "${k}":`,cur);
+  if(val===null) return;
+  localStorage.setItem(k,val);
+  toast('✅ Key updated');
+  _renderStorageViewer();
+}
+function _devDeleteStorageKey(k){
+  if(!confirm(`Delete key "${k}"?`)) return;
+  localStorage.removeItem(k);
+  toast('🗑️ Key deleted');
+  _renderStorageViewer();
+}
+// Catch console errors for log copy
+window._devCaughtErrors=[];
+window.addEventListener('error',e=>{ window._devCaughtErrors.push(`[ERR] ${e.message} @ ${e.filename}:${e.lineno}`); });
+
+
+/* ── Storage Quota Monitor ── */
+async function _updateStorageQuotaInfo(){
+  const infoDiv=document.getElementById('storageQuotaInfo');
+  if(!infoDiv) return;
+  
+  if(!navigator.storage || !navigator.storage.estimate){
+    infoDiv.innerHTML='⚠️ Storage Estimate API not available';
+    return;
+  }
+  
+  try{
+    const estimate=await navigator.storage.estimate();
+    const usage=estimate.usage||0;
+    const quota=estimate.quota||0;
+    const percentUsed=quota>0?Math.round((usage/quota)*100):0;
+    
+    const usageMB=(usage/(1024*1024)).toFixed(2);
+    const quotaMB=(quota/(1024*1024)).toFixed(2);
+    
+    const barWidth=percentUsed;
+    const barColor=percentUsed>80?'#ff6b6b':percentUsed>50?'#ffa500':'#00ff64';
+    
+    infoDiv.innerHTML=`
+      <div>Usage: <strong>${usageMB} MB</strong> / ${quotaMB} MB</div>
+      <div>Percentage: <strong>${percentUsed}%</strong></div>
+      <div style="margin-top:8px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;">
+        <div style="width:${barWidth}%;height:100%;background:${barColor};border-radius:3px;transition:width .3s;"></div>
+      </div>
+      <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,.6);">
+        Available: <strong>${((quota-usage)/(1024*1024)).toFixed(2)} MB</strong>
+      </div>
+    `;
+  } catch(e){
+    infoDiv.innerHTML='❌ Error: '+e.message;
+  }
+}
+
+/* ── Reset all ── */
+function _devResetAll(){
+  Object.keys(_devState).forEach(k=>{
+    if(_devState[k]){ _devApply(k,false); }
+    _devState[k]=false;
+    const sw=document.getElementById('devSw-'+k);
+    if(sw) sw.classList.remove('on');
+  });
+  // Extra cleanup
+  clearInterval(_fpsInterval);
+  clearInterval(_memInterval);
+  ['_devFpsBox','_devMemBox','_devBoundsStyle','_devDarkStyle','_devHCStyle',
+   '_devAnimStyle','_devNoAnimStyle','_devRepaintStyle','_devGpuStyle',
+   '_devHWStyle','_devPerfStyle','_devTouchStyle','_devPointerBar',
+   '_devConsoleBox','_devInspectBox','_devInspectHi','_devCrashBox','_devJankBox'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.remove();
+  });
+  if(_pointerBar){ _pointerBar.remove(); _pointerBar=null; }
+  // Restore overridden console
+  if(window._devConsoleOrig){
+    console.log=window._devConsoleOrig.log; console.warn=window._devConsoleOrig.warn;
+    console.error=window._devConsoleOrig.error; console.info=window._devConsoleOrig.info;
+    window._devConsoleOrig=null;
+  }
+  // Remove listeners
+  if(window._devInspectHandler){ document.removeEventListener('click',window._devInspectHandler,true); window._devInspectHandler=null; }
+  if(window._devErrHandler){ window.removeEventListener('error',window._devErrHandler); window._devErrHandler=null; }
+  if(window._devRejHandler){ window.removeEventListener('unhandledrejection',window._devRejHandler); window._devRejHandler=null; }
+  if(window._devJankObserver){ window._devJankObserver.disconnect(); window._devJankObserver=null; }
+  const svp=document.getElementById('storageViewerPanel'); if(svp) svp.style.display='none';
+  document.documentElement.dir='ltr';
+}
+
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+loadWp();
+loadTheme();
+
+</script>
+</body>
+</html>
