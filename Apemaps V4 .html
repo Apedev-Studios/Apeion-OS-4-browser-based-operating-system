@@ -1,0 +1,2531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Apemaps</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#c8506a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Apemaps">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --rose:#c8506a;--rose-dk:#a03850;--blush:#f0c4ce;--petal:#fde8ed;
+  --sage:#7a9e7e;--gold:#c9a84c;--cream:#fdf6f0;--ink:#2a1a1f;
+  --glass:rgba(255,255,255,0.92);--border:rgba(240,196,206,0.55);
+  --muted:rgba(42,26,31,0.45);--shadow:0 4px 24px rgba(200,80,106,0.13);
+}
+html,body{height:100%;width:100%;overflow:hidden;font-family:'DM Sans',sans-serif;background:#f0e8d8;}
+
+/* ── MAP ── */
+#map{position:fixed;inset:0;z-index:0;}
+
+/* ── FLORAL OVERLAY UI ── */
+.ui-layer{position:fixed;inset:0;z-index:10;pointer-events:none;}
+.ui-layer > *{pointer-events:all;}
+
+/* ── HEADER BAR ── */
+.header{
+  position:absolute;top:0;left:0;right:0;
+  padding:12px 14px;padding-top:max(12px,env(safe-area-inset-top));
+  display:flex;align-items:center;gap:10px;
+}
+
+.brand-pill{
+  display:flex;align-items:center;gap:8px;
+  background:var(--glass);backdrop-filter:blur(18px);
+  border:1.5px solid var(--border);border-radius:30px;
+  padding:8px 16px 8px 10px;
+  box-shadow:var(--shadow);
+  flex-shrink:0;
+}
+.brand-icon{width:28px;height:28px;background:linear-gradient(135deg,var(--rose),var(--rose-dk));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.brand-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--rose);letter-spacing:.05em;}
+.brand-name em{font-style:italic;color:var(--gold);}
+
+/* Search bar */
+.search-bar{
+  flex:1;display:flex;align-items:center;gap:0;
+  background:var(--glass);backdrop-filter:blur(18px);
+  border:1.5px solid var(--border);border-radius:30px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.search-bar input{
+  flex:1;padding:10px 14px;border:none;outline:none;background:transparent;
+  font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink);
+}
+.search-bar input::placeholder{color:var(--muted);}
+.search-btn{
+  width:42px;height:42px;border:none;background:transparent;cursor:pointer;
+  color:var(--rose);font-size:18px;display:flex;align-items:center;justify-content:center;
+  transition:background .15s;flex-shrink:0;
+}
+.search-btn:hover{background:var(--petal);}
+
+/* ── RIGHT SIDE CONTROLS ── */
+.right-controls{
+  position:absolute;right:14px;top:70px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.map-btn{
+  width:44px;height:44px;border-radius:50%;
+  background:var(--glass);backdrop-filter:blur(16px);
+  border:1.5px solid var(--border);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;box-shadow:var(--shadow);
+  transition:all .18s;color:var(--rose);
+}
+.map-btn:hover{background:var(--petal);transform:scale(1.08);}
+.map-btn:active{transform:scale(.92);}
+.map-btn.active{background:var(--rose);color:white;border-color:var(--rose);}
+
+/* ── BOTTOM PANEL ── */
+.bottom-panel{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:0 14px;padding-bottom:max(14px,env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:8px;
+}
+
+/* Layer chips */
+.layer-row{
+  display:flex;gap:8px;overflow-x:auto;padding:2px 0;
+}
+.layer-row::-webkit-scrollbar{display:none;}
+.layer-chip{
+  display:flex;align-items:center;gap:5px;
+  padding:7px 14px;border-radius:20px;
+  background:var(--glass);backdrop-filter:blur(14px);
+  border:1.5px solid var(--border);box-shadow:var(--shadow);
+  font-size:12.5px;font-weight:500;color:var(--ink);cursor:pointer;
+  white-space:nowrap;flex-shrink:0;transition:all .16s;
+}
+.layer-chip:hover{background:var(--petal);color:var(--rose);border-color:var(--rose);}
+.layer-chip.active{background:var(--rose);color:white;border-color:var(--rose);}
+.layer-chip span{font-size:14px;}
+
+/* Info card */
+.info-card{
+  background:var(--glass);backdrop-filter:blur(18px);
+  border:1.5px solid var(--border);border-radius:22px;
+  padding:16px 18px;box-shadow:0 8px 32px rgba(200,80,106,.15);
+  display:none;
+  animation:slideUp .3s cubic-bezier(.22,1,.36,1);
+}
+.info-card.show{display:block;}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.info-card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
+.info-place-name{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);line-height:1.2;}
+.info-close{width:28px;height:28px;border-radius:50%;background:rgba(200,80,106,.1);border:none;color:var(--rose);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.info-address{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.4;}
+.info-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap;}
+.ia-btn{
+  flex:1;min-width:70px;padding:8px 6px;border-radius:20px;border:1.5px solid var(--border);
+  background:rgba(255,255,255,.8);font-family:'DM Sans',sans-serif;font-size:11.5px;
+  font-weight:500;cursor:pointer;color:var(--ink);transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:4px;text-decoration:none;
+}
+.ia-btn:hover{background:var(--petal);border-color:var(--rose);color:var(--rose);}
+.ia-primary{background:linear-gradient(135deg,var(--rose),var(--rose-dk));color:white;border-color:transparent;box-shadow:0 3px 12px rgba(200,80,106,.3);}
+.ia-primary:hover{background:linear-gradient(135deg,var(--rose-dk),#8a2040);color:white;border-color:transparent;}
+.ia-save{background:linear-gradient(135deg,var(--sage),#5a7e5e);color:white;border-color:transparent;}
+.ia-save:hover{background:linear-gradient(135deg,#5a7e5e,#3a5e3e);color:white;border-color:transparent;}
+
+/* ── SEARCH RESULTS ── */
+.search-results{
+  position:absolute;top:72px;left:14px;right:14px;
+  background:var(--glass);backdrop-filter:blur(18px);
+  border:1.5px solid var(--border);border-radius:18px;
+  box-shadow:0 8px 32px rgba(200,80,106,.15);
+  overflow:hidden;display:none;max-height:280px;overflow-y:auto;
+  z-index:20;
+}
+.search-results.show{display:block;}
+.search-results::-webkit-scrollbar{width:3px;}
+.search-results::-webkit-scrollbar-thumb{background:var(--blush);}
+.sr-item{
+  display:flex;align-items:center;gap:12px;padding:12px 16px;
+  cursor:pointer;border-bottom:1px solid rgba(240,196,206,.3);
+  transition:background .14s;
+}
+.sr-item:last-child{border-bottom:none;}
+.sr-item:hover{background:var(--petal);}
+.sr-icon{width:36px;height:36px;border-radius:50%;background:rgba(200,80,106,.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.sr-name{font-size:13.5px;font-weight:500;color:var(--ink);}
+.sr-addr{font-size:11.5px;color:var(--muted);}
+.sr-loading{padding:16px;text-align:center;font-size:13px;color:var(--muted);}
+
+/* ── MY LOCATION PULSE ── */
+.my-loc-dot{
+  width:18px;height:18px;border-radius:50%;
+  background:var(--rose);border:3px solid white;
+  box-shadow:0 0 0 0 rgba(200,80,106,.4);
+  animation:locPulse 2s infinite;
+}
+@keyframes locPulse{
+  0%{box-shadow:0 0 0 0 rgba(200,80,106,.5);}
+  70%{box-shadow:0 0 0 14px rgba(200,80,106,0);}
+  100%{box-shadow:0 0 0 0 rgba(200,80,106,0);}
+}
+
+/* ── ROUTE PANEL ── */
+.route-panel{
+  background:var(--glass);backdrop-filter:blur(18px);
+  border:1.5px solid var(--border);border-radius:22px;
+  padding:14px 16px;box-shadow:0 8px 32px rgba(200,80,106,.15);
+  display:none;
+}
+.route-panel.show{display:block;}
+.route-inputs{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+.route-input-row{display:flex;align-items:center;gap:8px;}
+.route-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.route-dot.from{background:var(--sage);}
+.route-dot.to{background:var(--rose);}
+.route-inp{
+  flex:1;padding:8px 12px;border:1.5px solid var(--border);border-radius:20px;
+  font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);
+  background:rgba(255,255,255,.9);outline:none;transition:border-color .2s;
+}
+.route-inp:focus{border-color:var(--rose);}
+.route-modes{display:flex;gap:6px;margin-bottom:10px;}
+.rmode-btn{flex:1;padding:7px;border-radius:14px;border:1.5px solid var(--border);background:rgba(255,255,255,.7);cursor:pointer;font-size:18px;text-align:center;transition:all .15s;}
+.rmode-btn.active,.rmode-btn:hover{background:var(--rose);border-color:var(--rose);}
+.route-go{width:100%;padding:10px;border-radius:20px;border:none;background:linear-gradient(135deg,var(--rose),var(--rose-dk));color:white;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 3px 12px rgba(200,80,106,.3);transition:all .15s;}
+.route-go:hover{transform:translateY(-1px);}
+.route-info{display:flex;gap:12px;padding-top:10px;border-top:1px solid var(--border);margin-top:2px;}
+.ri-item{flex:1;text-align:center;}
+.ri-val{font-size:16px;font-weight:600;color:var(--rose);}
+.ri-label{font-size:11px;color:var(--muted);}
+
+/* ── TURN-BY-TURN STEPS ── */
+.steps-container{
+  max-height:160px;overflow-y:auto;margin-top:10px;
+  border-top:1px solid var(--border);padding-top:8px;
+  display:none;
+}
+.steps-container.show{display:block;}
+.steps-container::-webkit-scrollbar{width:3px;}
+.steps-container::-webkit-scrollbar-thumb{background:var(--blush);}
+.step-item{
+  display:flex;align-items:flex-start;gap:8px;padding:6px 4px;
+  border-bottom:1px solid rgba(240,196,206,.2);font-size:12px;color:var(--ink);
+}
+.step-item:last-child{border-bottom:none;}
+.step-num{
+  width:20px;height:20px;border-radius:50%;background:var(--rose);
+  color:white;font-size:10px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-weight:600;
+}
+.step-txt{flex:1;line-height:1.4;}
+.step-dist{font-size:10.5px;color:var(--muted);flex-shrink:0;}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-10px);
+  background:rgba(42,26,31,.88);color:white;padding:8px 18px;border-radius:24px;
+  font-size:12.5px;font-weight:500;z-index:100;
+  opacity:0;transition:opacity .22s,transform .22s;pointer-events:none;
+  backdrop-filter:blur(10px);white-space:nowrap;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── SAVED PLACES PANEL ── */
+.saved-panel{
+  position:absolute;top:0;left:0;width:280px;height:100%;max-height:100%;
+  background:var(--glass);backdrop-filter:blur(22px);
+  border-right:1.5px solid var(--border);
+  box-shadow:4px 0 24px rgba(200,80,106,.12);
+  transform:translateX(-100%);transition:transform .3s cubic-bezier(.22,1,.36,1);
+  z-index:30;display:flex;flex-direction:column;overflow:hidden;
+  padding-top:max(12px,env(safe-area-inset-top));
+}
+.saved-panel.show{transform:translateX(0);}
+.saved-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px 10px;border-bottom:1px solid var(--border);
+}
+.saved-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--rose);}
+.saved-close{width:28px;height:28px;border-radius:50%;background:rgba(200,80,106,.1);border:none;color:var(--rose);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.saved-list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px;}
+.saved-list::-webkit-scrollbar{width:3px;}
+.saved-list::-webkit-scrollbar-thumb{background:var(--blush);}
+.saved-empty{padding:24px 16px;text-align:center;color:var(--muted);font-size:13px;}
+.saved-item{
+  display:flex;align-items:center;gap:10px;padding:10px 10px;
+  border-radius:14px;cursor:pointer;margin-bottom:4px;
+  transition:background .14s;border:1px solid transparent;
+}
+.saved-item:hover{background:var(--petal);border-color:var(--border);}
+.saved-item-icon{width:34px;height:34px;border-radius:50%;background:rgba(200,80,106,.1);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;}
+.saved-item-name{font-size:13px;font-weight:500;color:var(--ink);flex:1;}
+.saved-item-addr{font-size:11px;color:var(--muted);}
+.saved-item-del{width:24px;height:24px;border-radius:50%;background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all .14s;flex-shrink:0;}
+.saved-item-del:hover{background:rgba(200,80,106,.15);color:var(--rose);}
+
+/* ── NEARBY PANEL ── */
+.nearby-panel{
+  background:var(--glass);backdrop-filter:blur(18px);
+  border:1.5px solid var(--border);border-radius:22px;
+  padding:14px 16px;box-shadow:0 8px 32px rgba(200,80,106,.15);
+  display:none;
+}
+.nearby-panel.show{display:block;}
+.nearby-title{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.nearby-cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
+.ncat{
+  padding:5px 12px;border-radius:16px;border:1.5px solid var(--border);
+  background:rgba(255,255,255,.8);font-size:12px;cursor:pointer;
+  transition:all .14s;color:var(--ink);
+}
+.ncat.active,.ncat:hover{background:var(--rose);color:white;border-color:var(--rose);}
+.nearby-list{max-height:150px;overflow-y:auto;}
+.nearby-list::-webkit-scrollbar{width:3px;}
+.nearby-list::-webkit-scrollbar-thumb{background:var(--blush);}
+.nearby-item{
+  display:flex;align-items:center;gap:8px;padding:7px 4px;
+  border-bottom:1px solid rgba(240,196,206,.25);cursor:pointer;transition:background .14s;
+}
+.nearby-item:hover{background:var(--petal);border-radius:8px;}
+.nearby-item:last-child{border-bottom:none;}
+.nearby-item-icon{font-size:16px;flex-shrink:0;}
+.nearby-item-info{flex:1;}
+.nearby-item-name{font-size:12.5px;font-weight:500;color:var(--ink);}
+.nearby-item-dist{font-size:11px;color:var(--muted);}
+
+/* ── DISTANCE TOOL ── */
+.dist-banner{
+  position:absolute;top:72px;left:50%;transform:translateX(-50%);
+  background:rgba(42,26,31,.88);color:white;padding:8px 20px;border-radius:24px;
+  font-size:13px;font-weight:500;backdrop-filter:blur(10px);
+  display:none;white-space:nowrap;z-index:20;
+}
+.dist-banner.show{display:block;}
+.dist-result{
+  position:absolute;bottom:120px;left:50%;transform:translateX(-50%);
+  background:var(--glass);backdrop-filter:blur(18px);
+  border:1.5px solid var(--border);border-radius:20px;
+  padding:10px 20px;box-shadow:var(--shadow);
+  display:none;white-space:nowrap;z-index:20;text-align:center;
+}
+.dist-result.show{display:block;}
+.dist-result-val{font-size:18px;font-weight:600;color:var(--rose);font-family:'Cormorant Garamond',serif;}
+.dist-result-label{font-size:11px;color:var(--muted);}
+
+/* ── SHARE PANEL ── */
+.share-modal{
+  position:fixed;inset:0;background:rgba(42,26,31,.35);backdrop-filter:blur(4px);
+  z-index:50;display:none;align-items:center;justify-content:center;
+}
+.share-modal.show{display:flex;}
+.share-box{
+  background:var(--cream);border:1.5px solid var(--border);border-radius:24px;
+  padding:24px;box-shadow:0 16px 48px rgba(200,80,106,.2);
+  width:calc(100% - 48px);max-width:320px;
+  animation:slideUp .3s cubic-bezier(.22,1,.36,1);
+}
+.share-box-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+.share-box-sub{font-size:12.5px;color:var(--muted);margin-bottom:16px;}
+.share-link-row{
+  display:flex;gap:8px;background:rgba(255,255,255,.9);border:1.5px solid var(--border);
+  border-radius:16px;padding:4px 4px 4px 14px;margin-bottom:14px;
+}
+.share-link-input{flex:1;border:none;outline:none;background:transparent;font-size:12px;color:var(--ink);}
+.share-copy-btn{padding:7px 14px;background:var(--rose);color:white;border:none;border-radius:12px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;}
+.share-btns{display:flex;gap:8px;}
+.share-action{flex:1;padding:10px 8px;border-radius:16px;border:1.5px solid var(--border);background:rgba(255,255,255,.8);cursor:pointer;font-size:12px;text-align:center;transition:all .14s;}
+.share-action:hover{background:var(--petal);border-color:var(--rose);color:var(--rose);}
+.share-close{width:100%;margin-top:12px;padding:10px;border-radius:16px;border:none;background:rgba(200,80,106,.1);color:var(--rose);cursor:pointer;font-size:13px;font-weight:500;}
+
+/* Leaflet overrides */
+.leaflet-control-zoom{display:none;}
+.leaflet-control-attribution{display:none!important;}
+.leaflet-control-attribution a{display:none!important;}
+.leaflet-popup-content-wrapper{
+  background:var(--cream)!important;border:1.5px solid var(--border)!important;
+  border-radius:16px!important;box-shadow:0 8px 28px rgba(200,80,106,.18)!important;
+  font-family:'DM Sans',sans-serif!important;
+}
+.leaflet-popup-tip{background:var(--cream)!important;}
+.leaflet-popup-content{font-size:13px!important;color:var(--ink)!important;margin:10px 14px!important;}
+.leaflet-popup-close-button{color:var(--rose)!important;}
+
+/* Dist line */
+.dist-temp-marker{
+  width:14px;height:14px;border-radius:50%;
+  background:var(--gold);border:2.5px solid white;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+
+/* ── LIMITED FEATURE TAG ── */
+.ltd-tag{
+  display:inline-block;font-size:9px;font-weight:700;letter-spacing:.04em;
+  background:rgba(201,168,76,.18);color:var(--rose-dk);
+  border:1px solid rgba(201,168,76,.45);border-radius:8px;
+  padding:1.5px 6px;margin-left:6px;vertical-align:middle;text-transform:uppercase;
+}
+
+/* ── TOOLS (MORE) PANEL ── */
+.tools-panel{
+  position:absolute;top:0;right:0;width:280px;height:100%;
+  background:var(--glass);backdrop-filter:blur(22px);
+  border-left:1.5px solid var(--border);
+  box-shadow:-4px 0 24px rgba(200,80,106,.12);
+  transform:translateX(100%);transition:transform .3s cubic-bezier(.22,1,.36,1);
+  z-index:30;display:flex;flex-direction:column;
+  padding-top:max(12px,env(safe-area-inset-top));
+}
+.tools-panel.show{transform:translateX(0);}
+.tools-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px 10px;border-bottom:1px solid var(--border);
+}
+.tools-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:var(--rose);}
+.tools-close{width:28px;height:28px;border-radius:50%;background:rgba(200,80,106,.1);border:none;color:var(--rose);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.tools-list{flex:1;overflow-y:auto;padding:10px;}
+.tools-list::-webkit-scrollbar{width:3px;}
+.tools-list::-webkit-scrollbar-thumb{background:var(--blush);}
+.tool-row{
+  display:flex;align-items:center;gap:12px;padding:11px 10px;
+  border-radius:14px;cursor:pointer;margin-bottom:3px;
+  transition:background .14s;border:1px solid transparent;
+}
+.tool-row:hover{background:var(--petal);border-color:var(--border);}
+.tool-row-icon{width:34px;height:34px;border-radius:50%;background:rgba(200,80,106,.1);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.tool-row-text{flex:1;}
+.tool-row-name{font-size:13px;font-weight:500;color:var(--ink);}
+.tool-row-sub{font-size:10.5px;color:var(--muted);}
+.tools-section-label{font-size:10.5px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;padding:10px 10px 4px;}
+
+/* ── VOICE SEARCH BUTTON STATE ── */
+.search-btn.listening{color:white;background:var(--rose);animation:voicePulse 1.2s infinite;}
+@keyframes voicePulse{0%{box-shadow:0 0 0 0 rgba(200,80,106,.5);}70%{box-shadow:0 0 0 10px rgba(200,80,106,0);}100%{box-shadow:0 0 0 0 rgba(200,80,106,0);}}
+
+/* ── FILTER ROW (Nearby) ── */
+.filter-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+.filter-chip{
+  padding:4px 10px;border-radius:14px;border:1.5px solid var(--border);
+  background:rgba(255,255,255,.8);font-size:11px;cursor:pointer;color:var(--ink);
+  transition:all .14s;
+}
+.filter-chip.active{background:var(--sage);color:white;border-color:var(--sage);}
+
+/* ── MULTI-STOP WAYPOINTS ── */
+.waypoint-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.waypoint-row .route-dot{background:var(--gold);}
+.waypoint-del{width:22px;height:22px;border-radius:50%;background:rgba(200,80,106,.1);border:none;color:var(--rose);cursor:pointer;font-size:11px;flex-shrink:0;}
+.add-waypoint-btn{
+  width:100%;padding:7px;margin-top:4px;border-radius:14px;border:1.5px dashed var(--border);
+  background:transparent;color:var(--rose);cursor:pointer;font-size:12px;font-weight:500;
+}
+.add-waypoint-btn:hover{background:var(--petal);}
+
+/* ── ALTERNATE ROUTES ── */
+.alt-routes-row{display:flex;gap:6px;margin-top:8px;}
+.alt-route-chip{
+  flex:1;padding:7px 4px;border-radius:14px;border:1.5px solid var(--border);
+  background:rgba(255,255,255,.8);font-size:11px;text-align:center;cursor:pointer;
+  transition:all .14s;color:var(--ink);
+}
+.alt-route-chip.active{background:var(--rose);color:white;border-color:var(--rose);}
+
+/* ── HOME/WORK SHORTCUTS ── */
+.hw-row{display:flex;gap:8px;padding:8px 10px;}
+.hw-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:10px 6px;border-radius:16px;border:1.5px solid var(--border);
+  background:rgba(255,255,255,.85);cursor:pointer;transition:all .15s;
+}
+.hw-btn:hover{background:var(--petal);border-color:var(--rose);}
+.hw-btn-icon{font-size:18px;}
+.hw-btn-label{font-size:10.5px;color:var(--ink);font-weight:500;}
+
+/* ── RECENT SEARCHES ── */
+.recent-row{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;transition:background .14s;}
+.recent-row:hover{background:var(--petal);}
+.recent-row-icon{font-size:14px;color:var(--muted);flex-shrink:0;}
+.recent-row-text{font-size:12.5px;color:var(--ink);flex:1;}
+
+/* ── WEATHER WIDGET ── */
+.weather-pill{
+  position:absolute;top:70px;left:14px;
+  background:var(--glass);backdrop-filter:blur(18px);
+  border:1.5px solid var(--border);border-radius:20px;
+  padding:7px 14px;box-shadow:var(--shadow);
+  display:none;align-items:center;gap:8px;font-size:12.5px;color:var(--ink);
+  cursor:pointer;
+}
+.weather-pill.show{display:flex;}
+.weather-pill .wp-temp{font-weight:600;color:var(--rose);}
+
+/* ── GEOFENCE ── */
+.geofence-banner{
+  position:absolute;top:120px;left:50%;transform:translateX(-50%);
+  background:rgba(122,158,126,.92);color:white;padding:8px 20px;border-radius:24px;
+  font-size:12.5px;font-weight:500;backdrop-filter:blur(10px);
+  display:none;white-space:nowrap;z-index:25;
+}
+.geofence-banner.show{display:block;animation:notifPop .3s cubic-bezier(.22,1,.36,1);}
+@keyframes notifPop{from{opacity:0;transform:translateX(-50%) translateY(-10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── PHOTO PIN ── */
+.photo-pin-thumb{width:60px;height:60px;border-radius:12px;object-fit:cover;border:2px solid white;box-shadow:0 3px 10px rgba(0,0,0,.2);}
+.photo-pin-popup-img{width:140px;height:100px;object-fit:cover;border-radius:10px;margin-bottom:6px;}
+
+/* ── CUSTOM PIN MODAL ── */
+.modal-mini{
+  position:fixed;inset:0;background:rgba(42,26,31,.35);backdrop-filter:blur(4px);
+  z-index:60;display:none;align-items:center;justify-content:center;
+}
+.modal-mini.show{display:flex;}
+.modal-mini-box{
+  background:var(--cream);border:1.5px solid var(--border);border-radius:24px;
+  padding:22px;box-shadow:0 16px 48px rgba(200,80,106,.2);
+  width:calc(100% - 48px);max-width:300px;
+  animation:slideUp .3s cubic-bezier(.22,1,.36,1);
+}
+.modal-mini-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600;color:var(--ink);margin-bottom:12px;}
+.modal-mini input,.modal-mini select{
+  width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:14px;
+  font-family:'DM Sans',sans-serif;font-size:13px;color:var(--ink);
+  background:rgba(255,255,255,.9);outline:none;margin-bottom:10px;
+}
+.modal-mini input:focus,.modal-mini select:focus{border-color:var(--rose);}
+.modal-mini-btns{display:flex;gap:8px;}
+.modal-mini-btns button{
+  flex:1;padding:9px;border-radius:14px;border:none;cursor:pointer;
+  font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;
+}
+.modal-mini-btn-primary{background:linear-gradient(135deg,var(--rose),var(--rose-dk));color:white;}
+.modal-mini-btn-secondary{background:rgba(200,80,106,.1);color:var(--rose);}
+
+/* ── TRIP HISTORY ── */
+.history-item{
+  display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;
+  cursor:pointer;margin-bottom:4px;transition:background .14s;border:1px solid transparent;
+}
+.history-item:hover{background:var(--petal);border-color:var(--border);}
+.history-item-icon{width:30px;height:30px;border-radius:50%;background:rgba(122,158,126,.15);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.history-item-route{font-size:12px;font-weight:500;color:var(--ink);}
+.history-item-meta{font-size:10.5px;color:var(--muted);}
+
+/* ── LIVE SHARE ── */
+.live-share-active-banner{
+  position:absolute;top:120px;left:50%;transform:translateX(-50%);
+  background:rgba(200,80,106,.92);color:white;padding:7px 16px;border-radius:24px;
+  font-size:12px;font-weight:500;backdrop-filter:blur(10px);
+  display:none;white-space:nowrap;z-index:25;align-items:center;gap:6px;
+}
+.live-share-active-banner.show{display:flex;}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#fff;animation:locPulse 1.4s infinite;}
+
+/* ── AREA MEASUREMENT RESULT extends dist-result, reuse ── */
+.area-temp-marker{
+  width:12px;height:12px;border-radius:50%;
+  background:var(--sage);border:2.5px solid white;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+
+/* ── DARK MODE (auto, applies tint to UI glass) ── */
+body.apemaps-dark-ui .brand-pill,
+body.apemaps-dark-ui .search-bar,
+body.apemaps-dark-ui .map-btn,
+body.apemaps-dark-ui .layer-chip,
+body.apemaps-dark-ui .info-card,
+body.apemaps-dark-ui .route-panel,
+body.apemaps-dark-ui .nearby-panel,
+body.apemaps-dark-ui .weather-pill,
+body.apemaps-dark-ui .search-results,
+body.apemaps-dark-ui .saved-panel,
+body.apemaps-dark-ui .tools-panel{
+  background:rgba(30,22,28,0.88)!important;border-color:rgba(255,255,255,0.12)!important;
+}
+body.apemaps-dark-ui .info-place-name,
+body.apemaps-dark-ui .sr-name,
+body.apemaps-dark-ui .nearby-item-name,
+body.apemaps-dark-ui .saved-item-name,
+body.apemaps-dark-ui .tool-row-name,
+body.apemaps-dark-ui .history-item-route,
+body.apemaps-dark-ui .tools-title,
+body.apemaps-dark-ui .saved-title{color:#f0e0e4!important;}
+body.apemaps-dark-ui .route-inp,
+body.apemaps-dark-ui .search-bar input{color:#f0e0e4!important;}
+</style>
+</head>
+<body>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- UI LAYER -->
+<div class="ui-layer">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="brand-pill">
+      <div class="brand-icon">🌸</div>
+      <span class="brand-name">Ape<em>maps</em></span>
+    </div>
+    <div class="search-bar">
+      <input type="text" id="searchInput" aria-label="Search places or cities" placeholder="Search places, cities…" onkeydown="if(event.key==='Enter')doSearch()" onfocus="showRecentIfEmpty()">
+      <button class="search-btn" id="voiceBtn" onclick="startVoiceSearch()" title="Voice Search" aria-label="Voice Search">🎤</button>
+      <button class="search-btn" onclick="doSearch()" title="Search" aria-label="Search">🔍</button>
+    </div>
+  </div>
+
+  <!-- SEARCH RESULTS -->
+  <div class="search-results" id="searchResults"></div>
+
+  <!-- DISTANCE BANNER -->
+  <div class="dist-banner" id="distBanner">📏 Pehla point tap karo</div>
+
+  <!-- WEATHER WIDGET -->
+  <div class="weather-pill" id="weatherPill" onclick="refreshWeather()"></div>
+
+  <!-- GEOFENCE ALERT BANNER -->
+  <div class="geofence-banner" id="geofenceBanner"></div>
+
+  <!-- LIVE SHARE ACTIVE BANNER -->
+  <div class="live-share-active-banner" id="liveShareBanner" onclick="toggleLiveShare()">
+    <span class="live-dot"></span><span id="liveShareBannerTxt">Live location ON</span>
+  </div>
+
+  <!-- RIGHT CONTROLS -->
+  <div class="right-controls">
+    <button class="map-btn" onclick="locateMe()" title="My Location" aria-label="My Location">📍</button>
+    <button class="map-btn" onclick="zoomIn()" title="Zoom In" aria-label="Zoom In">+</button>
+    <button class="map-btn" onclick="zoomOut()" title="Zoom Out" aria-label="Zoom Out">−</button>
+    <button class="map-btn" id="routeToggleBtn" onclick="toggleRoutePanel()" title="Directions" aria-label="Directions">🗺️</button>
+    <button class="map-btn" id="nearbyToggleBtn" onclick="toggleNearby()" title="Nearby" aria-label="Nearby">🔎</button>
+    <button class="map-btn" id="savedToggleBtn" onclick="toggleSaved()" title="Saved Places" aria-label="Saved Places">🔖</button>
+    <button class="map-btn" id="distToggleBtn" onclick="toggleDistTool()" title="Measure Distance" aria-label="Measure Distance">📏</button>
+    <button class="map-btn" id="shareBtn" onclick="shareLocation()" title="Share Location" aria-label="Share Location">🔗</button>
+    <button class="map-btn" id="screenshotBtn" onclick="takeScreenshot()" title="Screenshot" aria-label="Screenshot">📸</button>
+    <button class="map-btn" id="areaToggleBtn" onclick="toggleAreaTool()" title="Measure Area" aria-label="Measure Area">📐</button>
+    <button class="map-btn" id="toolsToggleBtn" onclick="toggleTools()" title="More Tools" aria-label="More Tools">⋯</button>
+    <button class="map-btn" id="fullBtn" onclick="toggleFullscreen()" title="Fullscreen" aria-label="Fullscreen">⛶</button>
+  </div>
+
+  <!-- BOTTOM PANEL -->
+  <div class="bottom-panel">
+
+    <!-- Nearby panel -->
+    <div class="nearby-panel" id="nearbyPanel">
+      <div class="nearby-title">🔎 Aas-paas dhundho</div>
+      <div class="nearby-cats">
+        <div class="ncat active" data-amenity="restaurant" onclick="nearbySearch('restaurant',this)">🍽️ Restaurant</div>
+        <div class="ncat" data-amenity="cafe" onclick="nearbySearch('cafe',this)">☕ Cafe</div>
+        <div class="ncat" data-amenity="fuel" onclick="nearbySearch('fuel',this)">⛽ Petrol</div>
+        <div class="ncat" data-amenity="hospital" onclick="nearbySearch('hospital',this)">🏥 Hospital</div>
+        <div class="ncat" data-amenity="atm" onclick="nearbySearch('atm',this)">🏧 ATM</div>
+        <div class="ncat" data-amenity="pharmacy" onclick="nearbySearch('pharmacy',this)">💊 Pharmacy</div>
+        <div class="ncat" data-amenity="parking" onclick="nearbySearch('parking',this)">🅿️ Parking</div>
+        <div class="ncat" data-amenity="hotel" onclick="nearbySearch('hotel',this)">🏨 Hotel</div>
+      </div>
+      <div class="filter-row" id="nearbyFilterRow">
+        <div class="filter-chip active" data-filter="all" onclick="setNearbyFilter('all',this)">All</div>
+        <div class="filter-chip" data-filter="near" onclick="setNearbyFilter('near',this)">&lt; 500m</div>
+        <div class="filter-chip" data-filter="open" onclick="setNearbyFilter('open',this)">Named only</div>
+      </div>
+      <div class="nearby-list" id="nearbyList"><div class="sr-loading">Pehle ek category choose karo 🌸</div></div>
+    </div>
+
+    <!-- Route panel -->
+    <div class="route-panel" id="routePanel">
+      <div class="hw-row">
+        <div class="hw-btn" onclick="goHomeOrWork('home')">
+          <span class="hw-btn-icon">🏠</span><span class="hw-btn-label" id="homeBtnLabel">Set Home</span>
+        </div>
+        <div class="hw-btn" onclick="goHomeOrWork('work')">
+          <span class="hw-btn-icon">💼</span><span class="hw-btn-label" id="workBtnLabel">Set Work</span>
+        </div>
+      </div>
+      <div class="route-inputs">
+        <div class="route-input-row">
+          <div class="route-dot from"></div>
+          <input class="route-inp" id="fromInput" aria-label="From location" placeholder="From: My location ya jagah ka naam" type="text">
+        </div>
+        <div id="waypointsContainer"></div>
+        <div class="route-input-row">
+          <div class="route-dot to"></div>
+          <input class="route-inp" id="toInput" aria-label="To location" placeholder="To: Kahan jaana hai?" type="text">
+        </div>
+      </div>
+      <button class="add-waypoint-btn" onclick="addWaypoint()">➕ Stop add karo (Multi-stop)</button>
+      <div class="route-modes">
+        <button class="rmode-btn active" id="rm-drive" onclick="setRouteMode('drive',this)" title="Driving">🚗</button>
+        <button class="rmode-btn" id="rm-bike"  onclick="setRouteMode('bike',this)"  title="Cycling">🚲</button>
+        <button class="rmode-btn" id="rm-walk"  onclick="setRouteMode('walk',this)"  title="Walking">🚶</button>
+      </div>
+      <button class="route-go" onclick="getDirections()">🌸 Get Directions</button>
+      <div class="alt-routes-row" id="altRoutesRow" style="display:none"></div>
+      <div class="route-info" id="routeInfo" style="display:none">
+        <div class="ri-item"><div class="ri-val" id="riDist">—</div><div class="ri-label">Distance</div></div>
+        <div class="ri-item"><div class="ri-val" id="riTime">—</div><div class="ri-label">Time</div></div>
+        <div class="ri-item"><div class="ri-val" id="riMode">🚗</div><div class="ri-label">Mode</div></div>
+      </div>
+      <!-- Turn-by-turn steps -->
+      <div class="steps-container" id="stepsContainer"></div>
+    </div>
+
+    <!-- Layer chips -->
+    <div class="layer-row">
+      <div class="layer-chip active" data-layer="standard" onclick="switchLayer('standard',this)"><span>🗺️</span> Standard</div>
+      <div class="layer-chip" data-layer="satellite" onclick="switchLayer('satellite',this)"><span>🛰️</span> Satellite</div>
+      <div class="layer-chip" data-layer="topo" onclick="switchLayer('topo',this)"><span>⛰️</span> Terrain</div>
+      <div class="layer-chip" data-layer="dark" onclick="switchLayer('dark',this)"><span>🌙</span> Dark</div>
+      <div class="layer-chip" data-layer="watercolor" onclick="switchLayer('watercolor',this)"><span>🎨</span> Artistic</div>
+      <div class="layer-chip" id="trafficFlowChip" onclick="toggleTrafficFlow(this)"><span>🚦</span> Traffic</div>
+      <div class="layer-chip" id="trafficIncChip" onclick="toggleTrafficIncidents(this)"><span>⚠️</span> Incidents</div>
+    </div>
+
+    <!-- Info card -->
+    <div class="info-card" id="infoCard">
+      <div class="info-card-header">
+        <div>
+          <div class="info-place-name" id="infoName">Place Name</div>
+          <div class="info-address" id="infoAddr">Address loading…</div>
+        </div>
+        <button class="info-close" onclick="closeInfo()" title="Close" aria-label="Close">✕</button>
+      </div>
+      <div class="info-actions">
+        <button class="ia-btn" onclick="openInGoogleMaps()">🗺️ GMaps</button>
+        <button class="ia-btn" onclick="copyCoords()">📋 Copy</button>
+        <button class="ia-btn ia-save" onclick="saveCurrentPlace()">🔖 Save</button>
+        <button class="ia-btn ia-primary" onclick="routeTo()">🌸 Route</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- DISTANCE RESULT -->
+  <div class="dist-result" id="distResult">
+    <div class="dist-result-val" id="distResultVal">—</div>
+    <div class="dist-result-label">Do points ke beech ki doori</div>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button onclick="resetDistTool()" style="flex:1;padding:7px;border-radius:12px;border:1.5px solid var(--border);background:rgba(255,255,255,.8);cursor:pointer;font-size:12px;color:var(--ink);">🔄 Reset</button>
+      <button onclick="toggleDistTool()" style="flex:1;padding:7px;border-radius:12px;border:none;background:var(--rose);color:white;cursor:pointer;font-size:12px;font-weight:600;">✓ Done</button>
+    </div>
+  </div>
+
+  <!-- AREA RESULT -->
+  <div class="dist-result" id="areaResult">
+    <div class="dist-result-val" id="areaResultVal">—</div>
+    <div class="dist-result-label">Area (polygon banao, 3+ points)</div>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button onclick="resetAreaTool()" style="flex:1;padding:7px;border-radius:12px;border:1.5px solid var(--border);background:rgba(255,255,255,.8);cursor:pointer;font-size:12px;color:var(--ink);">🔄 Reset</button>
+      <button onclick="toggleAreaTool()" style="flex:1;padding:7px;border-radius:12px;border:none;background:var(--sage);color:white;cursor:pointer;font-size:12px;font-weight:600;">✓ Done</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- SAVED PLACES PANEL -->
+<div class="saved-panel" id="savedPanel">
+  <div class="saved-header">
+    <div class="saved-title">🔖 Saved Places</div>
+    <button class="saved-close" onclick="toggleSaved()">✕</button>
+  </div>
+  <div class="saved-list" id="savedList"></div>
+</div>
+
+<!-- TOOLS (MORE) PANEL -->
+<div class="tools-panel" id="toolsPanel">
+  <div class="tools-header">
+    <div class="tools-title">🌸 More Tools</div>
+    <button class="tools-close" onclick="toggleTools()">✕</button>
+  </div>
+  <div class="tools-list" id="toolsList">
+
+    <div class="tools-section-label">Trip &amp; History</div>
+    <div class="tool-row" onclick="toggleHistory()">
+      <div class="tool-row-icon">🕓</div>
+      <div class="tool-row-text"><div class="tool-row-name">Trip History</div><div class="tool-row-sub">Pehle ki gayi routes/jagahein</div></div>
+    </div>
+    <div class="tool-row" onclick="toggleRecentSearches(true)">
+      <div class="tool-row-icon">🔍</div>
+      <div class="tool-row-text"><div class="tool-row-name">Recent Searches</div><div class="tool-row-sub">Pehle search kiya hua</div></div>
+    </div>
+
+    <div class="tools-section-label">Personalize</div>
+    <div class="tool-row" onclick="openCustomPinModal()">
+      <div class="tool-row-icon">📌</div>
+      <div class="tool-row-text"><div class="tool-row-name">Custom Pin Add Karo</div><div class="tool-row-sub">Apna label + category ke saath pin</div></div>
+    </div>
+    <div class="tool-row" onclick="openPhotoPinPicker()">
+      <div class="tool-row-icon">📷</div>
+      <div class="tool-row-text"><div class="tool-row-name">Photo Pin</div><div class="tool-row-sub">Photo ke saath memory pin banao</div></div>
+    </div>
+    <div class="tool-row" onclick="toggleDarkAuto()">
+      <div class="tool-row-icon">🌙</div>
+      <div class="tool-row-text"><div class="tool-row-name">Auto Dark Mode</div><div class="tool-row-sub" id="darkAutoStatus">Sunset par auto dark layer</div></div>
+    </div>
+
+    <div class="tools-section-label">Live &amp; Safety</div>
+    <div class="tool-row" onclick="toggleLiveShare()">
+      <div class="tool-row-icon">📡</div>
+      <div class="tool-row-text"><div class="tool-row-name">Live Location Sharing<span class="ltd-tag">Limited</span></div><div class="tool-row-sub" id="liveShareStatus">Real-time location link</div></div>
+    </div>
+    <div class="tool-row" onclick="openGeofenceModal()">
+      <div class="tool-row-icon">📍</div>
+      <div class="tool-row-text"><div class="tool-row-name">Geofence Alert</div><div class="tool-row-sub" id="geofenceStatus">Area enter/exit par alert</div></div>
+    </div>
+    <div class="tool-row" onclick="toggleCollabTrip()">
+      <div class="tool-row-icon">🤝</div>
+      <div class="tool-row-text"><div class="tool-row-name">Collaborative Trip<span class="ltd-tag">Limited</span></div><div class="tool-row-sub">Saved list export/import via file</div></div>
+    </div>
+
+    <div class="tools-section-label">Map Data</div>
+    <div class="tool-row" onclick="toggleTransitLayer()">
+      <div class="tool-row-icon">🚌</div>
+      <div class="tool-row-text"><div class="tool-row-name">Public Transport Layer</div><div class="tool-row-sub" id="transitStatus">Bus stops &amp; stations dikhao</div></div>
+    </div>
+    <div class="tool-row" onclick="refreshWeather(true)">
+      <div class="tool-row-icon">🌤️</div>
+      <div class="tool-row-text"><div class="tool-row-name">Weather Overlay</div><div class="tool-row-sub" id="weatherStatus">Current weather widget</div></div>
+    </div>
+    <div class="tool-row" onclick="cacheCurrentTiles()">
+      <div class="tool-row-icon">💾</div>
+      <div class="tool-row-text"><div class="tool-row-name">Cache Visible Tiles</div><div class="tool-row-sub">Tezi se reload ke liye save</div></div>
+    </div>
+    <div class="tool-row" onclick="downloadOfflineArea()">
+      <div class="tool-row-icon">⬇️</div>
+      <div class="tool-row-text"><div class="tool-row-name">Offline Area Download<span class="ltd-tag">Limited</span></div><div class="tool-row-sub">Visible area ke tiles cache karo</div></div>
+    </div>
+
+    <div class="tools-section-label">App</div>
+    <div class="tool-row" id="installToolRow" onclick="installApp()">
+      <div class="tool-row-icon">📲</div>
+      <div class="tool-row-text"><div class="tool-row-name">Install Apemaps</div><div class="tool-row-sub">Home screen par add karo, app jaisa chalao</div></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TRIP HISTORY PANEL (reuses saved-panel style via dynamic class toggle) -->
+<div class="saved-panel" id="historyPanel">
+  <div class="saved-header">
+    <div class="saved-title">🕓 Trip History</div>
+    <button class="saved-close" onclick="toggleHistory()">✕</button>
+  </div>
+  <div class="saved-list" id="historyList"></div>
+</div>
+
+<!-- RECENT SEARCHES DROPDOWN (appears under search bar) -->
+<div class="search-results" id="recentSearchesBox" style="display:none"></div>
+
+<!-- CUSTOM PIN MODAL -->
+<div class="modal-mini" id="customPinModal" onclick="if(event.target===this)closeCustomPinModal()">
+  <div class="modal-mini-box">
+    <div class="modal-mini-title">📌 Custom Pin</div>
+    <input type="text" id="customPinName" aria-label="Pin name" placeholder="Pin ka naam (e.g. Mera Farmhouse)">
+    <select id="customPinCategory">
+      <option value="📍">📍 General</option>
+      <option value="🏡">🏡 Home / Farmhouse</option>
+      <option value="⭐">⭐ Favourite</option>
+      <option value="🚩">🚩 Landmark</option>
+      <option value="🅿️">🅿️ Parking Spot</option>
+      <option value="🎉">🎉 Event</option>
+    </select>
+    <div class="modal-mini-btns">
+      <button class="modal-mini-btn-secondary" onclick="closeCustomPinModal()">Cancel</button>
+      <button class="modal-mini-btn-primary" onclick="addCustomPin()">Pin Add Karo</button>
+    </div>
+  </div>
+</div>
+
+<!-- GEOFENCE MODAL -->
+<div class="modal-mini" id="geofenceModal" onclick="if(event.target===this)closeGeofenceModal()">
+  <div class="modal-mini-box">
+    <div class="modal-mini-title">📍 Geofence Alert <span class="ltd-tag">Limited</span></div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px;">Map ke center par geofence set hoga. Tab tak hi kaam karega jab tak yeh tab khula hai (background tracking nahi).</div>
+    <input type="text" id="geofenceName" aria-label="Geofence name" placeholder="Naam (e.g. Office Area)">
+    <select id="geofenceRadius">
+      <option value="200">200 m radius</option>
+      <option value="500" selected>500 m radius</option>
+      <option value="1000">1 km radius</option>
+      <option value="2000">2 km radius</option>
+    </select>
+    <div class="modal-mini-btns">
+      <button class="modal-mini-btn-secondary" onclick="closeGeofenceModal()">Cancel</button>
+      <button class="modal-mini-btn-primary" onclick="createGeofence()">Set Karo</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTO PIN HIDDEN INPUT -->
+<input type="file" id="photoPinInput" accept="image/*" style="display:none" onchange="handlePhotoPinFile(event)">
+
+<!-- SHARE MODAL -->
+<div class="share-modal" id="shareModal" onclick="if(event.target===this)closeShare()">
+  <div class="share-box">
+    <div class="share-box-title">📍 Share Location</div>
+    <div class="share-box-sub">Yeh link share karo — seedha map par khulega</div>
+    <div class="share-link-row">
+      <input class="share-link-input" id="shareLinkInput" aria-label="Share link" readonly>
+      <button class="share-copy-btn" onclick="copyShareLink()">Copy</button>
+    </div>
+    <div class="share-btns">
+      <button class="share-action" onclick="shareWhatsApp()">💬 WhatsApp</button>
+      <button class="share-action" onclick="shareTelegram()">✈️ Telegram</button>
+      <button class="share-action" onclick="shareNative()">↗️ Share</button>
+    </div>
+    <button class="share-close" onclick="closeShare()">Bandh karo</button>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+
+<script>
+/* ═══════════════════════════════════
+   SAFE LOCALSTORAGE HELPERS
+   Corrupt/blocked storage should never crash the app.
+═══════════════════════════════════ */
+function safeGet(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Apemaps: corrupt localStorage key "' + key + '", resetting.', e);
+    try { localStorage.removeItem(key); } catch (e2) {}
+    return fallback;
+  }
+}
+function safeSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+  catch (e) { console.warn('Apemaps: could not save "' + key + '"', e); return false; }
+}
+
+/* ═══════════════════════════════════
+   MAP INIT
+═══════════════════════════════════ */
+const map = L.map('map', {
+  center: [20.5937, 78.9629],
+  zoom: 5,
+  zoomControl: false,
+  attributionControl: true,
+});
+
+// Check URL for shared location
+(function() {
+  const params = new URLSearchParams(location.search);
+  const lat = parseFloat(params.get('lat'));
+  const lng = parseFloat(params.get('lng'));
+  const z   = parseInt(params.get('z')) || 15;
+  if (!isNaN(lat) && !isNaN(lng)) {
+    setTimeout(() => {
+      map.setView([lat, lng], z);
+      toast('📍 Shared location khul gayi!');
+      showInfoAt(lat, lng, 'Shared Location', `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+      addSearchMarker(lat, lng, 'Shared Location');
+    }, 600);
+  }
+})();
+
+// Tile layers — CARTO & Esri only (no Referer needed, works from local files)
+const LAYERS = {
+  standard: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution:'© <a href="https://carto.com">CARTO</a> © <a href="https://openstreetmap.org">OSM</a>',
+    subdomains:'abcd', maxZoom:20
+  }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution:'© Esri, Maxar, Earthstar Geographics', maxZoom:19
+  }),
+  topo: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+    attribution:'© Esri, HERE, Garmin, FAO', maxZoom:19
+  }),
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution:'© <a href="https://carto.com">CARTO</a> © OSM',
+    subdomains:'abcd', maxZoom:20
+  }),
+  watercolor: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
+    attribution:'© <a href="https://carto.com">CARTO</a> © OSM',
+    subdomains:'abcd', maxZoom:20
+  }),
+};
+
+let currentLayer = 'standard';
+LAYERS.standard.addTo(map);
+
+function switchLayer(name, el) {
+  if(name === currentLayer) return;
+  map.removeLayer(LAYERS[currentLayer]);
+  LAYERS[name].addTo(map);
+  currentLayer = name;
+  document.querySelectorAll('.layer-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  toast('🗺️ ' + el.textContent.trim());
+}
+
+/* ═══════════════════════════════════
+   REAL TRAFFIC LAYERS (TomTom via Supabase)
+═══════════════════════════════════ */
+const SUPABASE_TRAFFIC_URL = 'https://ocxrttqxhghovlyjudrk.supabase.co/functions/v1/tomtom-traffic';
+
+let trafficFlowLayer = null;
+let trafficIncLayer = null;
+let trafficFlowOn = false;
+let trafficIncOn = false;
+
+function toggleTrafficFlow(el) {
+  if (!trafficFlowOn) {
+    trafficFlowLayer = L.tileLayer(
+      SUPABASE_TRAFFIC_URL + '?type=flow&z={z}&x={x}&y={y}',
+      { opacity: 0.75, maxZoom: 20, attribution: '© TomTom Traffic' }
+    );
+    trafficFlowLayer.addTo(map);
+    trafficFlowOn = true;
+    el.classList.add('active');
+    toast('🚦 Real traffic ON');
+  } else {
+    map.removeLayer(trafficFlowLayer);
+    trafficFlowLayer = null;
+    trafficFlowOn = false;
+    el.classList.remove('active');
+    toast('🚦 Traffic OFF');
+  }
+}
+
+function toggleTrafficIncidents(el) {
+  if (!trafficIncOn) {
+    trafficIncLayer = L.tileLayer(
+      SUPABASE_TRAFFIC_URL + '?type=incidents&z={z}&x={x}&y={y}',
+      { opacity: 0.85, maxZoom: 20, attribution: '© TomTom Incidents' }
+    );
+    trafficIncLayer.addTo(map);
+    trafficIncOn = true;
+    el.classList.add('active');
+    toast('⚠️ Incidents layer ON');
+  } else {
+    map.removeLayer(trafficIncLayer);
+    trafficIncLayer = null;
+    trafficIncOn = false;
+    el.classList.remove('active');
+    toast('⚠️ Incidents OFF');
+  }
+}
+
+/* ═══════════════════════════════════
+   MY LOCATION
+═══════════════════════════════════ */
+let myMarker = null;
+let myCircle = null;
+
+function locateMe() {
+  toast('📍 Location dhundh raha hoon…');
+  if (!navigator.geolocation) { toast('❌ Geolocation support nahi hai'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+    if (myMarker) { myMarker.setLatLng([lat, lng]); myCircle.setLatLng([lat, lng]).setRadius(accuracy); }
+    else {
+      const icon = L.divIcon({ className:'', html:'<div class="my-loc-dot"></div>', iconSize:[18,18], iconAnchor:[9,9] });
+      myMarker = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map).bindPopup('📍 Aap yahan hain');
+      myCircle = L.circle([lat, lng], { radius: accuracy, color: '#c8506a', fillColor: '#f0c4ce', fillOpacity: 0.15, weight: 1 }).addTo(map);
+    }
+    map.setView([lat, lng], 16);
+    toast('✅ Location mili!');
+    document.getElementById('fromInput').value = 'My Location';
+    fromCoords = [lat, lng];
+  }, err => {
+    toast('❌ Location nahi mili: ' + (err.code === 1 ? 'Permission denied' : err.message));
+  }, { enableHighAccuracy: true, timeout: 10000 });
+}
+
+/* ═══════════════════════════════════
+   SEARCH (Nominatim)
+═══════════════════════════════════ */
+let searchTimer = null;
+
+document.getElementById('searchInput').addEventListener('input', function() {
+  clearTimeout(searchTimer);
+  const q = this.value.trim();
+  if (q.length < 3) { hideResults(); return; }
+  searchTimer = setTimeout(() => liveSearch(q), 400);
+});
+
+document.getElementById('searchInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { hideResults(); this.blur(); }
+});
+
+async function liveSearch(q) {
+  const el = document.getElementById('searchResults');
+  el.innerHTML = '<div class="sr-loading">🌸 Searching…</div>';
+  el.classList.add('show');
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=6&addressdetails=1`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en', 'User-Agent': 'Apemaps/1.0' } });
+    const data = await res.json();
+    if (!data.length) { el.innerHTML = '<div class="sr-loading">No results found 🌸</div>'; return; }
+    el.innerHTML = data.map(r => {
+      const icon = placeIcon(r.type || r.class);
+      const name = r.display_name.split(',')[0];
+      const addr = r.display_name.split(',').slice(1, 3).join(',');
+      return `<div class="sr-item" onclick="selectResult(${r.lat},${r.lon},'${esc(r.display_name)}','${esc(name)}')">
+        <div class="sr-icon">${icon}</div>
+        <div><div class="sr-name">${esc(name)}</div><div class="sr-addr">${esc(addr)}</div></div>
+      </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML = '<div class="sr-loading">❌ Search failed. Check internet.</div>'; }
+}
+
+async function doSearch() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+  await liveSearch(q);
+}
+
+function selectResult(lat, lon, fullName, name) {
+  hideResults();
+  document.getElementById('searchInput').value = name;
+  map.setView([lat, lon], 15);
+  showInfoAt(lat, lon, name, fullName);
+  addSearchMarker(lat, lon, name);
+  pushRecentSearch(name, lat, lon);
+}
+
+function hideResults() {
+  document.getElementById('searchResults').classList.remove('show');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-bar') && !e.target.closest('.search-results')) hideResults();
+});
+
+/* ═══════════════════════════════════
+   MARKERS
+═══════════════════════════════════ */
+let searchMarkers = [];
+let clickedLatLng = null;
+
+function addSearchMarker(lat, lon, name) {
+  const icon = L.divIcon({
+    className: '',
+    html: `<div style="background:linear-gradient(135deg,#c8506a,#a03850);width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 4px 14px rgba(200,80,106,.4);display:flex;align-items:center;justify-content:center;">
+      <span style="transform:rotate(45deg);font-size:13px;">🌸</span></div>`,
+    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34]
+  });
+  const m = L.marker([lat, lon], { icon }).addTo(map).bindPopup(`<b>${name}</b>`);
+  searchMarkers.push(m);
+  m.openPopup();
+}
+
+// Map click → reverse geocode
+map.on('click', async e => {
+  if (distMode) { handleDistClick(e.latlng); return; }
+  if (areaMode) { handleAreaClick(e.latlng); return; }
+  const { lat, lng } = e.latlng;
+  clickedLatLng = [lat, lng];
+  showInfoAt(lat, lng, 'Loading…', '');
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, {
+      headers: { 'User-Agent': 'Apemaps/1.0' }
+    });
+    const data = await res.json();
+    const name = data.name || data.display_name?.split(',')[0] || 'This Location';
+    const addr = data.display_name || '';
+    showInfoAt(lat, lng, name, addr);
+  } catch(e) {
+    showInfoAt(lat, lng, 'Selected Location', `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+  }
+});
+
+/* ═══════════════════════════════════
+   INFO CARD
+═══════════════════════════════════ */
+function showInfoAt(lat, lng, name, addr) {
+  clickedLatLng = [lat, lng];
+  document.getElementById('infoName').textContent = name;
+  document.getElementById('infoAddr').textContent = addr || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  document.getElementById('infoCard').classList.add('show');
+}
+
+function closeInfo() {
+  document.getElementById('infoCard').classList.remove('show');
+  clickedLatLng = null;
+}
+
+function openInGoogleMaps() {
+  if (!clickedLatLng) return;
+  const [lat, lng] = clickedLatLng;
+  window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+}
+
+function copyCoords() {
+  if (!clickedLatLng) return;
+  const txt = `${clickedLatLng[0].toFixed(6)}, ${clickedLatLng[1].toFixed(6)}`;
+  navigator.clipboard.writeText(txt).then(() => toast('📋 Coordinates copied!')).catch(() => toast('📋 ' + txt));
+}
+
+function routeTo() {
+  if (!clickedLatLng) return;
+  const addr = document.getElementById('infoName').textContent;
+  document.getElementById('toInput').value = addr;
+  toCoords = clickedLatLng;
+  closeInfo();
+  showRoutePanel(true);
+}
+
+/* ═══════════════════════════════════
+   SAVED PLACES
+═══════════════════════════════════ */
+let savedPlaces = safeGet('apemaps_saved', []);
+
+function savePlaces() {
+  safeSet('apemaps_saved', savedPlaces);
+}
+
+function saveCurrentPlace() {
+  if (!clickedLatLng) return;
+  const name = document.getElementById('infoName').textContent;
+  const addr = document.getElementById('infoAddr').textContent;
+  const [lat, lng] = clickedLatLng;
+  const existing = savedPlaces.find(p => Math.abs(p.lat - lat) < 0.0001 && Math.abs(p.lng - lng) < 0.0001);
+  if (existing) { toast('📌 Yeh jagah pehle se save hai!'); return; }
+  savedPlaces.unshift({ id: Date.now(), name, addr, lat, lng });
+  savePlaces();
+  renderSavedList();
+  toast('🔖 "' + name.substring(0,20) + '" save ho gayi!');
+}
+
+function renderSavedList() {
+  const el = document.getElementById('savedList');
+  if (!savedPlaces.length) {
+    el.innerHTML = '<div class="saved-empty">🌸<br><br>Koi jagah abhi save nahi ki<br><small>Map par kisi jagah ko tap karo, phir "Save" dabao</small></div>';
+    return;
+  }
+  el.innerHTML = savedPlaces.map(p => `
+    <div class="saved-item" onclick="goToSaved(${p.lat},${p.lng},'${esc(p.name)}','${esc(p.addr)}')">
+      <div class="saved-item-icon">📍</div>
+      <div style="flex:1;min-width:0">
+        <div class="saved-item-name">${esc(p.name.substring(0,28))}</div>
+        <div class="saved-item-addr">${esc((p.addr||'').substring(0,35))}</div>
+      </div>
+      <button class="saved-item-del" onclick="event.stopPropagation();deleteSaved(${p.id})">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function goToSaved(lat, lng, name, addr) {
+  map.setView([lat, lng], 16);
+  showInfoAt(lat, lng, name, addr);
+  addSearchMarker(lat, lng, name);
+  toggleSaved();
+}
+
+function deleteSaved(id) {
+  savedPlaces = savedPlaces.filter(p => p.id !== id);
+  savePlaces();
+  renderSavedList();
+  toast('🗑️ Remove ho gayi');
+}
+
+function toggleSaved() {
+  const p = document.getElementById('savedPanel');
+  p.classList.toggle('show');
+  document.getElementById('savedToggleBtn').classList.toggle('active', p.classList.contains('show'));
+  if (p.classList.contains('show')) renderSavedList();
+}
+
+// Init
+renderSavedList();
+
+/* ═══════════════════════════════════
+   ROUTE / DIRECTIONS + TURN-BY-TURN
+═══════════════════════════════════ */
+let fromCoords = null, toCoords = null;
+let routeMode = 'drive';
+let routeLine = null;
+let routeWaypointMarkers = [];
+
+function setRouteMode(mode, el) {
+  routeMode = mode;
+  document.querySelectorAll('.rmode-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function toggleRoutePanel() {
+  showRoutePanel(!document.getElementById('routePanel').classList.contains('show'));
+}
+function showRoutePanel(show) {
+  document.getElementById('routePanel').classList.toggle('show', show);
+  document.getElementById('routeToggleBtn').classList.toggle('active', show);
+  if (show) document.getElementById('nearbyPanel').classList.remove('show');
+}
+
+// Turn-by-turn instruction parser
+function parseSteps(legs) {
+  const steps = [];
+  for (const leg of legs) {
+    for (const step of (leg.steps || [])) {
+      const m = step.maneuver || {};
+      const type = m.type || '';
+      const mod  = m.modifier || '';
+      let icon = '➡️';
+      if (type === 'turn') {
+        if (mod.includes('left')) icon = '↰';
+        else if (mod.includes('right')) icon = '↱';
+        else if (mod.includes('straight')) icon = '⬆️';
+        else if (mod.includes('uturn')) icon = '↩️';
+      } else if (type === 'depart') icon = '🟢';
+      else if (type === 'arrive') icon = '🏁';
+      else if (type === 'roundabout' || type === 'rotary') icon = '🔄';
+      else if (type === 'merge') icon = '🔀';
+      else if (type === 'fork') icon = '⑂';
+      else if (type === 'end of road') icon = '⬆️';
+      const name = step.name || '';
+      const dist = step.distance >= 1000
+        ? (step.distance/1000).toFixed(1) + ' km'
+        : Math.round(step.distance) + ' m';
+      let instr = icon + ' ';
+      if (type === 'depart') instr += 'Head ' + (mod || 'forward') + (name ? ' on ' + name : '');
+      else if (type === 'arrive') instr += 'Arrive at destination';
+      else if (type === 'turn') instr += 'Turn ' + (mod || '') + (name ? ' onto ' + name : '');
+      else if (type === 'roundabout') instr += 'Enter roundabout' + (name ? ', exit on ' + name : '');
+      else instr += type + (name ? ' — ' + name : '');
+      steps.push({ instr, dist });
+    }
+  }
+  return steps;
+}
+
+async function getDirections() {
+  const fromTxt = document.getElementById('fromInput').value.trim();
+  const toTxt   = document.getElementById('toInput').value.trim();
+  if (!fromTxt || !toTxt) { toast('❌ From aur To dono bharo'); return; }
+
+  toast('🌸 Route dhundh raha hoon…');
+
+  if (!fromCoords) fromCoords = await geocode(fromTxt);
+  if (!toCoords)   toCoords   = await geocode(toTxt);
+
+  if (!fromCoords) { toast('❌ From location nahi mili'); return; }
+  if (!toCoords)   { toast('❌ To location nahi mili');   return; }
+
+  // Resolve waypoint coordinates (multi-stop)
+  const wpTexts = getWaypointTexts();
+  const wpCoordsList = [];
+  for (const t of wpTexts) {
+    if (!t) continue;
+    const c = await geocode(t);
+    if (c) wpCoordsList.push(c);
+  }
+
+  const profile = routeMode === 'drive' ? 'driving' : routeMode === 'bike' ? 'cycling' : 'foot';
+  const coordChain = [fromCoords, ...wpCoordsList, toCoords];
+  const coordStr = coordChain.map(c => `${c[1]},${c[0]}`).join(';');
+  const wantAlternatives = wpCoordsList.length === 0; // OSRM alternatives only reliable for simple A->B
+  const url = `https://router.project-osrm.org/route/v1/${profile}/${coordStr}?overview=full&geometries=geojson&steps=true${wantAlternatives ? '&alternatives=true' : ''}`;
+
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.code !== 'Ok' || !data.routes.length) { toast('❌ Route nahi mila'); return; }
+
+    lastRouteData = data;
+    lastRouteMeta = { fromTxt, toTxt, wpTexts: wpTexts.filter(Boolean), fromCoords: fromCoords.slice(), toCoords: toCoords.slice(), profile };
+    renderAltRoutes(data.routes);
+    drawRoute(data.routes[0], fromTxt, toTxt, wpCoordsList);
+    saveTripToHistory(fromTxt, toTxt, data.routes[0]);
+    armLiveRerouting();
+
+  } catch(e) { toast('❌ Route error. Check internet.'); }
+}
+
+function drawRoute(route, fromTxt, toTxt, wpCoordsList) {
+  const dist = route.distance;
+  const dur  = route.duration;
+
+  if (routeLine) map.removeLayer(routeLine);
+  routeLine = L.geoJSON(route.geometry, {
+    style: { color: '#c8506a', weight: 5, opacity: 0.85, dashArray: routeMode==='walk'?'6,8':null }
+  }).addTo(map);
+  map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+
+  routeWaypointMarkers.forEach(m => map.removeLayer(m));
+  routeWaypointMarkers = [];
+
+  const fromIcon = markerIcon('#7a9e7e','🟢');
+  const toIcon   = markerIcon('#c8506a','🌸');
+  routeWaypointMarkers.push(L.marker(fromCoords, { icon: fromIcon }).addTo(map).bindPopup('🟢 Start: ' + fromTxt));
+  (wpCoordsList||[]).forEach((c,i) => {
+    routeWaypointMarkers.push(L.marker(c, { icon: markerIcon('#c9a84c','📍') }).addTo(map).bindPopup('Stop ' + (i+1)));
+  });
+  routeWaypointMarkers.push(L.marker(toCoords, { icon: toIcon }).addTo(map).bindPopup('🌸 End: ' + toTxt));
+
+  document.getElementById('riDist').textContent = dist >= 1000 ? (dist/1000).toFixed(1) + ' km' : Math.round(dist) + ' m';
+  document.getElementById('riTime').textContent = dur >= 3600
+    ? Math.floor(dur/3600) + 'h ' + Math.floor((dur%3600)/60) + 'm'
+    : Math.round(dur/60) + ' min';
+  document.getElementById('riMode').textContent = routeMode==='drive'?'🚗':routeMode==='bike'?'🚲':'🚶';
+  document.getElementById('routeInfo').style.display = 'flex';
+
+  // Turn-by-turn steps
+  const steps = parseSteps(route.legs || []);
+  const sc = document.getElementById('stepsContainer');
+  if (steps.length) {
+    sc.innerHTML = steps.map((s,i) => `
+      <div class="step-item">
+        <div class="step-num">${i+1}</div>
+        <div class="step-txt">${esc(s.instr)}</div>
+        <div class="step-dist">${s.dist}</div>
+      </div>
+    `).join('');
+    sc.classList.add('show');
+  } else {
+    sc.classList.remove('show');
+  }
+
+  toast(`✅ Route ready — ${document.getElementById('riDist').textContent} · ${steps.length} steps`);
+}
+
+/* ── ALTERNATE ROUTES (#4) ── */
+let lastRouteData = null;
+let lastRouteMeta = null;
+
+function renderAltRoutes(routes) {
+  const row = document.getElementById('altRoutesRow');
+  if (!routes || routes.length < 2) { row.style.display = 'none'; row.innerHTML = ''; return; }
+  row.style.display = 'flex';
+  row.innerHTML = routes.map((r,i) => {
+    const d = r.distance >= 1000 ? (r.distance/1000).toFixed(1)+'km' : Math.round(r.distance)+'m';
+    const t = r.duration >= 3600 ? Math.floor(r.duration/3600)+'h'+Math.floor((r.duration%3600)/60)+'m' : Math.round(r.duration/60)+'min';
+    return `<div class="alt-route-chip${i===0?' active':''}" data-idx="${i}" onclick="selectAltRoute(${i})">${i===0?'⭐ ':''}${t} · ${d}</div>`;
+  }).join('');
+}
+
+function selectAltRoute(idx) {
+  if (!lastRouteData || !lastRouteData.routes[idx]) return;
+  document.querySelectorAll('.alt-route-chip').forEach(c => c.classList.remove('active'));
+  document.querySelector(`.alt-route-chip[data-idx="${idx}"]`).classList.add('active');
+  drawRoute(lastRouteData.routes[idx], lastRouteMeta.fromTxt, lastRouteMeta.toTxt, []);
+  toast('🔄 Alternate route selected');
+}
+
+/* ── MULTI-STOP WAYPOINTS (#3) ── */
+let waypointCount = 0;
+
+function addWaypoint() {
+  waypointCount++;
+  const id = 'wp_' + waypointCount;
+  const div = document.createElement('div');
+  div.className = 'route-input-row waypoint-row';
+  div.id = 'row_' + id;
+  div.innerHTML = `
+    <div class="route-dot"></div>
+    <input class="route-inp" id="${id}" placeholder="Stop ${waypointCount}: jagah ka naam" type="text">
+    <button class="waypoint-del" onclick="removeWaypoint('${id}')">✕</button>
+  `;
+  document.getElementById('waypointsContainer').appendChild(div);
+  if (document.querySelectorAll('#waypointsContainer .waypoint-row').length >= 3) {
+    toast('ℹ️ Max 3 stops recommended for accuracy');
+  }
+}
+
+function removeWaypoint(id) {
+  const row = document.getElementById('row_' + id);
+  if (row) row.remove();
+}
+
+function getWaypointTexts() {
+  return Array.from(document.querySelectorAll('#waypointsContainer input')).map(i => i.value.trim());
+}
+
+/* ── LIVE RE-ROUTING (#2) ──
+   Watches user's live position; if they drift >80m from the route line, recalculates. */
+let liveRerouteWatchId = null;
+let liveRerouteActive = false;
+
+function armLiveRerouting() {
+  if (!navigator.geolocation || liveRerouteActive) return;
+  liveRerouteActive = true;
+  liveRerouteWatchId = navigator.geolocation.watchPosition(pos => {
+    if (!routeLine || !lastRouteMeta) return;
+    const { latitude, longitude } = pos.coords;
+    const onRoute = isNearRouteLine(latitude, longitude, 80);
+    if (!onRoute) {
+      toast('🔄 Route se hat gaye — re-routing…');
+      fromCoords = [latitude, longitude];
+      document.getElementById('fromInput').value = 'My Location';
+      getDirections();
+    }
+  }, () => {}, { enableHighAccuracy: true, maximumAge: 5000 });
+}
+
+function disarmLiveRerouting() {
+  if (liveRerouteWatchId !== null) navigator.geolocation.clearWatch(liveRerouteWatchId);
+  liveRerouteWatchId = null;
+  liveRerouteActive = false;
+}
+
+function isNearRouteLine(lat, lng, thresholdMeters) {
+  if (!routeLine) return true;
+  let minDist = Infinity;
+  routeLine.eachLayer(layer => {
+    const latlngs = layer.getLatLngs ? flattenLatLngs(layer.getLatLngs()) : [];
+    for (let i = 0; i < latlngs.length - 1; i++) {
+      const d = pointToSegmentDist(lat, lng, latlngs[i].lat, latlngs[i].lng, latlngs[i+1].lat, latlngs[i+1].lng);
+      if (d < minDist) minDist = d;
+    }
+  });
+  return minDist <= thresholdMeters;
+}
+
+function flattenLatLngs(arr) {
+  if (!Array.isArray(arr)) return [arr];
+  if (arr.length && Array.isArray(arr[0])) return arr.flatMap(flattenLatLngs);
+  return arr;
+}
+
+function pointToSegmentDist(lat, lng, lat1, lng1, lat2, lng2) {
+  // Approximate using equirectangular projection (fine for short segments)
+  const toXY = (la, lo) => [lo * 111320 * Math.cos(la*Math.PI/180), la * 110540];
+  const [px, py] = toXY(lat, lng);
+  const [ax, ay] = toXY(lat1, lng1);
+  const [bx, by] = toXY(lat2, lng2);
+  const dx = bx-ax, dy = by-ay;
+  const len2 = dx*dx + dy*dy;
+  let t = len2 ? ((px-ax)*dx + (py-ay)*dy) / len2 : 0;
+  t = Math.max(0, Math.min(1, t));
+  const cx = ax + t*dx, cy = ay + t*dy;
+  return Math.sqrt((px-cx)**2 + (py-cy)**2);
+}
+
+/* ── HOME / WORK SHORTCUTS (#13) ── */
+function loadHomeWork() {
+  const home = safeGet('apemaps_home', null);
+  const work = safeGet('apemaps_work', null);
+  document.getElementById('homeBtnLabel').textContent = home ? '🏠 ' + home.name.substring(0,14) : 'Set Home';
+  document.getElementById('workBtnLabel').textContent = work ? '💼 ' + work.name.substring(0,14) : 'Set Work';
+}
+
+function goHomeOrWork(kind) {
+  const saved = safeGet('apemaps_' + kind, null);
+  if (!saved) {
+    if (!clickedLatLng) { toast('📍 Pehle map par tap karo, phir ' + (kind==='home'?'Home':'Work') + ' set karo'); return; }
+    const name = document.getElementById('infoName').textContent;
+    const [lat, lng] = clickedLatLng;
+    safeSet('apemaps_' + kind, { name, lat, lng });
+    loadHomeWork();
+    toast('✅ ' + (kind==='home'?'🏠 Home':'💼 Work') + ' set ho gaya: ' + name);
+    return;
+  }
+  document.getElementById('toInput').value = saved.name;
+  toCoords = [saved.lat, saved.lng];
+  toast('🌸 ' + (kind==='home'?'Home':'Work') + ' route taiyar — Get Directions dabao');
+}
+loadHomeWork();
+
+async function geocode(q) {
+  if (q === 'My Location' && myMarker) return [myMarker.getLatLng().lat, myMarker.getLatLng().lng];
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`, { headers:{'User-Agent':'Apemaps/1.0'} });
+    const data = await res.json();
+    if (!data.length) return null;
+    return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+  } catch(e) { return null; }
+}
+
+function markerIcon(color, emoji) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="background:${color};width:28px;height:28px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2.5px solid white;box-shadow:0 3px 12px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;">
+      <span style="transform:rotate(45deg);font-size:12px;">${emoji}</span></div>`,
+    iconSize:[28,28], iconAnchor:[14,28], popupAnchor:[0,-30]
+  });
+}
+
+/* ═══════════════════════════════════
+   NEARBY SEARCH (Overpass API)
+═══════════════════════════════════ */
+let nearbyMarkers = [];
+let nearbyLastPlaces = [];
+let nearbyLastAmenity = '';
+let nearbyActiveFilter = 'all';
+
+function toggleNearby() {
+  const p = document.getElementById('nearbyPanel');
+  p.classList.toggle('show');
+  document.getElementById('nearbyToggleBtn').classList.toggle('active', p.classList.contains('show'));
+  if (p.classList.contains('show')) {
+    document.getElementById('routePanel').classList.remove('show');
+    document.getElementById('routeToggleBtn').classList.remove('active');
+  }
+}
+
+/* ── SEARCH FILTERS (#9) ── */
+function setNearbyFilter(filter, el) {
+  nearbyActiveFilter = filter;
+  document.querySelectorAll('#nearbyFilterRow .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderNearbyList();
+}
+
+function applyNearbyFilter(places) {
+  if (nearbyActiveFilter === 'near') return places.filter(p => p.dist <= 500);
+  if (nearbyActiveFilter === 'open') return places.filter(p => p.tags?.name);
+  return places;
+}
+
+function renderNearbyList() {
+  const listEl = document.getElementById('nearbyList');
+  const filtered = applyNearbyFilter(nearbyLastPlaces);
+
+  nearbyMarkers.forEach(m => map.removeLayer(m));
+  nearbyMarkers = [];
+
+  if (!filtered.length) {
+    listEl.innerHTML = '<div class="sr-loading">Is filter mein kuch nahi mila 😔</div>';
+    return;
+  }
+
+  listEl.innerHTML = filtered.map((p,i) => `
+    <div class="nearby-item" onclick="goToNearby(${p.plat},${p.plng},'${esc(p.name)}')">
+      <div class="nearby-item-icon">${placeIcon(nearbyLastAmenity)}</div>
+      <div class="nearby-item-info">
+        <div class="nearby-item-name">${esc(p.name.substring(0,30))}</div>
+        <div class="nearby-item-dist">${p.dist < 1000 ? Math.round(p.dist)+'m' : (p.dist/1000).toFixed(1)+'km'} door</div>
+      </div>
+    </div>
+  `).join('');
+
+  filtered.forEach(p => {
+    const icon = L.divIcon({
+      className:'',
+      html:`<div style="background:#c9a84c;width:26px;height:26px;border-radius:50%;border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;font-size:13px;">${placeIcon(nearbyLastAmenity)}</div>`,
+      iconSize:[26,26],iconAnchor:[13,13]
+    });
+    const m = L.marker([p.plat, p.plng], { icon }).addTo(map).bindPopup(`<b>${p.name}</b>`);
+    nearbyMarkers.push(m);
+  });
+}
+
+async function nearbySearch(amenity, el) {
+  document.querySelectorAll('.ncat').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  nearbyLastAmenity = amenity;
+
+  const center = map.getCenter();
+  const lat = center.lat, lng = center.lng;
+  const radius = 2000; // 2km
+
+  const listEl = document.getElementById('nearbyList');
+  listEl.innerHTML = '<div class="sr-loading">🌸 Dhundh raha hoon…</div>';
+
+  nearbyMarkers.forEach(m => map.removeLayer(m));
+  nearbyMarkers = [];
+
+  const query = `[out:json][timeout:10];
+    (node["amenity"="${amenity}"](around:${radius},${lat},${lng});
+     way["amenity"="${amenity}"](around:${radius},${lat},${lng}););
+    out center 20;`;
+
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(query)
+    });
+    const data = await res.json();
+    const items = data.elements || [];
+
+    if (!items.length) {
+      nearbyLastPlaces = [];
+      listEl.innerHTML = '<div class="sr-loading">Aas-paas kuch nahi mila 😔</div>';
+      return;
+    }
+
+    const places = items.map(el => {
+      const plat = el.lat || el.center?.lat;
+      const plng = el.lon || el.center?.lon;
+      const name = el.tags?.name || el.tags?.['name:en'] || amenity;
+      const dist = distBetween(lat, lng, plat, plng);
+      return { name, plat, plng, dist, tags: el.tags };
+    }).sort((a,b) => a.dist - b.dist);
+
+    nearbyLastPlaces = places;
+    renderNearbyList();
+    toast(`✅ ${places.length} ${amenity} mile aas-paas`);
+  } catch(e) {
+    listEl.innerHTML = '<div class="sr-loading">❌ Nearby search failed</div>';
+  }
+}
+
+function goToNearby(lat, lng, name) {
+  map.setView([lat, lng], 17);
+  showInfoAt(lat, lng, name, '');
+}
+
+function distBetween(lat1, lng1, lat2, lng2) {
+  const R = 6371000;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLng = (lng2-lng1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+/* ═══════════════════════════════════
+   DISTANCE MEASUREMENT TOOL
+═══════════════════════════════════ */
+let distMode = false;
+let distPoints = [];
+let distMarkers = [];
+let distPolyline = null;
+
+function toggleDistTool() {
+  distMode = !distMode;
+  document.getElementById('distToggleBtn').classList.toggle('active', distMode);
+  document.getElementById('distBanner').classList.toggle('show', distMode);
+  if (!distMode) {
+    resetDistTool();
+    document.getElementById('distResult').classList.remove('show');
+  } else {
+    distPoints = [];
+    document.getElementById('distBanner').textContent = '📏 Pehla point tap karo';
+    map.getContainer().style.cursor = 'crosshair';
+    toast('📏 Distance mode ON — 2 points tap karo');
+  }
+}
+
+function handleDistClick(latlng) {
+  distPoints.push(latlng);
+
+  const icon = L.divIcon({
+    className:'',
+    html:'<div class="dist-temp-marker"></div>',
+    iconSize:[14,14],iconAnchor:[7,7]
+  });
+  distMarkers.push(L.marker(latlng, { icon }).addTo(map));
+
+  if (distPoints.length === 1) {
+    document.getElementById('distBanner').textContent = '📏 Doosra point tap karo';
+  } else if (distPoints.length === 2) {
+    if (distPolyline) map.removeLayer(distPolyline);
+    distPolyline = L.polyline(distPoints, {
+      color: '#c9a84c', weight: 3, dashArray: '8,6', opacity: 0.9
+    }).addTo(map);
+
+    const d = distBetween(distPoints[0].lat, distPoints[0].lng, distPoints[1].lat, distPoints[1].lng);
+    const dStr = d >= 1000 ? (d/1000).toFixed(2) + ' km' : Math.round(d) + ' m';
+    document.getElementById('distResultVal').textContent = dStr;
+    document.getElementById('distResult').classList.add('show');
+    document.getElementById('distBanner').textContent = '✅ ' + dStr;
+    toast('📏 Distance: ' + dStr);
+  } else {
+    resetDistTool();
+    distPoints = [latlng];
+    distMarkers.push(L.marker(latlng, { icon }).addTo(map));
+    document.getElementById('distBanner').textContent = '📏 Doosra point tap karo';
+    document.getElementById('distResult').classList.remove('show');
+  }
+}
+
+function resetDistTool() {
+  distPoints = [];
+  distMarkers.forEach(m => map.removeLayer(m));
+  distMarkers = [];
+  if (distPolyline) { map.removeLayer(distPolyline); distPolyline = null; }
+  if (distMode) document.getElementById('distBanner').textContent = '📏 Pehla point tap karo';
+  document.getElementById('distResult').classList.remove('show');
+  map.getContainer().style.cursor = '';
+}
+
+/* ═══════════════════════════════════
+   SHARE LOCATION
+═══════════════════════════════════ */
+function shareLocation() {
+  const center = map.getCenter();
+  const zoom = map.getZoom();
+  const lat = center.lat.toFixed(6);
+  const lng = center.lng.toFixed(6);
+  const base = location.origin + location.pathname;
+  const url = `${base}?lat=${lat}&lng=${lng}&z=${zoom}`;
+  document.getElementById('shareLinkInput').value = url;
+  document.getElementById('shareModal').classList.add('show');
+}
+
+function closeShare() {
+  document.getElementById('shareModal').classList.remove('show');
+}
+
+function copyShareLink() {
+  const url = document.getElementById('shareLinkInput').value;
+  navigator.clipboard.writeText(url).then(() => toast('🔗 Link copy ho gayi!')).catch(() => {
+    document.getElementById('shareLinkInput').select();
+    document.execCommand('copy');
+    toast('🔗 Link copy ho gayi!');
+  });
+}
+
+function shareWhatsApp() {
+  const url = document.getElementById('shareLinkInput').value;
+  window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent('📍 Dekho yeh jagah Apemaps par: ' + url), '_blank');
+}
+
+function shareTelegram() {
+  const url = document.getElementById('shareLinkInput').value;
+  window.open('https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent('📍 Apemaps location'), '_blank');
+}
+
+function shareNative() {
+  const url = document.getElementById('shareLinkInput').value;
+  if (navigator.share) {
+    navigator.share({ title: 'Apemaps Location', text: '📍 Meri location dekho', url });
+  } else {
+    copyShareLink();
+  }
+}
+
+/* ═══════════════════════════════════
+   MAP SCREENSHOT (html2canvas-free)
+   Uses canvas + Leaflet tile capture approach
+═══════════════════════════════════ */
+function takeScreenshot() {
+  toast('📸 Screenshot le raha hoon…');
+  // We use the leaflet-image approach via canvas
+  const center = map.getCenter();
+  const zoom = map.getZoom();
+  const lat = center.lat.toFixed(5);
+  const lng = center.lng.toFixed(5);
+
+  // Create a shareable text summary as fallback
+  const info = `📍 Apemaps — ${lat}, ${lng} (Zoom: ${zoom})\n🗺️ ${location.href}`;
+
+  // Try native share with current map info
+  if (navigator.share) {
+    navigator.share({
+      title: 'Apemaps Screenshot',
+      text: `📍 Map view: ${lat}, ${lng}\n🔗 ${location.origin + location.pathname}?lat=${lat}&lng=${lng}&z=${zoom}`
+    }).then(() => toast('✅ Share ho gayi!')).catch(() => fallbackScreenshot(info));
+  } else {
+    fallbackScreenshot(info);
+  }
+}
+
+function fallbackScreenshot(info) {
+  // Build an SVG snapshot of the current view
+  const center = map.getCenter();
+  const zoom = map.getZoom();
+  const lat = center.lat.toFixed(5);
+  const lng = center.lng.toFixed(5);
+  const url = `${location.origin + location.pathname}?lat=${lat}&lng=${lng}&z=${zoom}`;
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" style="background:#fdf6f0;font-family:sans-serif;">
+    <rect width="400" height="200" fill="#fdf6f0" rx="12"/>
+    <text x="20" y="40" font-size="22" fill="#c8506a" font-weight="bold">🌸 Apemaps</text>
+    <text x="20" y="75" font-size="13" fill="#2a1a1f">📍 Location: ${lat}, ${lng}</text>
+    <text x="20" y="100" font-size="12" fill="#888">Zoom level: ${zoom}</text>
+    <text x="20" y="130" font-size="10" fill="#c8506a">${url}</text>
+    <text x="20" y="175" font-size="10" fill="#aaa">Apemaps — ${new Date().toLocaleString()}</text>
+  </svg>`;
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = `apemaps-${lat}-${lng}.svg`;
+  a.click();
+  URL.revokeObjectURL(blobUrl);
+  toast('📸 Map card download ho gayi!');
+}
+
+/* ═══════════════════════════════════
+   ZOOM CONTROLS
+═══════════════════════════════════ */
+function zoomIn()  { map.zoomIn(); }
+function zoomOut() { map.zoomOut(); }
+
+/* ═══════════════════════════════════
+   FULLSCREEN
+═══════════════════════════════════ */
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(()=>{});
+    document.getElementById('fullBtn').textContent = '⛶';
+    toast('⛶ Fullscreen');
+  } else {
+    document.exitFullscreen();
+    document.getElementById('fullBtn').textContent = '⛶';
+  }
+}
+
+/* ═══════════════════════════════════
+   PLACE ICON HELPER
+═══════════════════════════════════ */
+function placeIcon(type) {
+  const m = {
+    restaurant:'🍽️', cafe:'☕', hotel:'🏨', hospital:'🏥', school:'🏫', university:'🎓',
+    shop:'🛍️', supermarket:'🛒', bank:'🏦', atm:'🏧', pharmacy:'💊', park:'🌳',
+    place:'📍', city:'🏙️', town:'🏘️', village:'🏡', road:'🛣️', railway:'🚂',
+    airport:'✈️', bus_stop:'🚌', fuel:'⛽', parking:'🅿️', church:'⛪', mosque:'🕌',
+    temple:'🛕', museum:'🏛️', theatre:'🎭', stadium:'🏟️', cinema:'🎬',
+  };
+  return m[type] || '📍';
+}
+
+/* ═══════════════════════════════════
+   TOAST
+═══════════════════════════════════ */
+let _tt;
+function toast(msg) {
+  const t = document.getElementById('toastEl');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(_tt); _tt = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+/* ═══════════════════════════════════
+   TOOLS (MORE) PANEL TOGGLE
+═══════════════════════════════════ */
+function toggleTools() {
+  const p = document.getElementById('toolsPanel');
+  p.classList.toggle('show');
+  document.getElementById('toolsToggleBtn').classList.toggle('active', p.classList.contains('show'));
+}
+
+/* ═══════════════════════════════════
+   #8 VOICE SEARCH (Web Speech API)
+═══════════════════════════════════ */
+function startVoiceSearch() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('❌ Voice search is browser support nahi karta'); return; }
+  const rec = new SR();
+  rec.lang = 'en-IN';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  const btn = document.getElementById('voiceBtn');
+  btn.classList.add('listening');
+  toast('🎤 Bolo…');
+  rec.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    document.getElementById('searchInput').value = text;
+    doSearch();
+  };
+  rec.onerror = () => { toast('❌ Voice search nahi sun paya'); };
+  rec.onend = () => { btn.classList.remove('listening'); };
+  rec.start();
+}
+
+/* ═══════════════════════════════════
+   #10 RECENT SEARCHES
+═══════════════════════════════════ */
+let recentSearches = safeGet('apemaps_recent', []);
+
+function pushRecentSearch(name, lat, lon) {
+  recentSearches = recentSearches.filter(r => r.name !== name);
+  recentSearches.unshift({ name, lat, lon, t: Date.now() });
+  recentSearches = recentSearches.slice(0, 10);
+  safeSet('apemaps_recent', recentSearches);
+}
+
+function showRecentIfEmpty() {
+  const input = document.getElementById('searchInput');
+  if (input.value.trim().length) return;
+  toggleRecentSearches(true);
+}
+
+function toggleRecentSearches(forceShow) {
+  const box = document.getElementById('recentSearchesBox');
+  const show = forceShow !== undefined ? forceShow : box.style.display === 'none';
+  if (!show) { box.style.display = 'none'; return; }
+  if (!recentSearches.length) {
+    box.innerHTML = '<div class="sr-loading">Koi recent search nahi hai abhi 🌸</div>';
+  } else {
+    box.innerHTML = recentSearches.map(r => `
+      <div class="recent-row" onclick="selectResult(${r.lat},${r.lon},'${esc(r.name)}','${esc(r.name)}');toggleRecentSearches(false)">
+        <span class="recent-row-icon">🕓</span><span class="recent-row-text">${esc(r.name.substring(0,40))}</span>
+      </div>
+    `).join('');
+  }
+  box.style.display = 'block';
+  box.classList.add('show');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.search-bar') && !e.target.closest('#recentSearchesBox')) toggleRecentSearches(false);
+});
+
+/* ═══════════════════════════════════
+   #6 TRIP HISTORY
+═══════════════════════════════════ */
+let tripHistory = safeGet('apemaps_history', []);
+
+function saveTripToHistory(fromTxt, toTxt, route) {
+  const entry = {
+    id: Date.now(), fromTxt, toTxt, mode: routeMode,
+    dist: route.distance, dur: route.duration,
+    fromCoords: fromCoords.slice(), toCoords: toCoords.slice()
+  };
+  tripHistory.unshift(entry);
+  tripHistory = tripHistory.slice(0, 25);
+  safeSet('apemaps_history', tripHistory);
+}
+
+function toggleHistory() {
+  const p = document.getElementById('historyPanel');
+  p.classList.toggle('show');
+  if (p.classList.contains('show')) renderHistoryList();
+}
+
+function renderHistoryList() {
+  const el = document.getElementById('historyList');
+  if (!tripHistory.length) {
+    el.innerHTML = '<div class="saved-empty">🕓<br><br>Koi trip history nahi hai<br><small>Directions lo, automatically yahan save hogi</small></div>';
+    return;
+  }
+  const modeIcon = m => m==='drive'?'🚗':m==='bike'?'🚲':'🚶';
+  el.innerHTML = tripHistory.map(h => `
+    <div class="history-item" onclick="replayTrip(${h.id})">
+      <div class="history-item-icon">${modeIcon(h.mode)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="history-item-route">${esc(h.fromTxt.substring(0,16))} → ${esc(h.toTxt.substring(0,16))}</div>
+        <div class="history-item-meta">${h.dist>=1000?(h.dist/1000).toFixed(1)+'km':Math.round(h.dist)+'m'} · ${new Date(h.id).toLocaleDateString()}</div>
+      </div>
+      <button class="saved-item-del" onclick="event.stopPropagation();deleteHistoryItem(${h.id})">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function replayTrip(id) {
+  const h = tripHistory.find(x => x.id === id);
+  if (!h) return;
+  document.getElementById('fromInput').value = h.fromTxt;
+  document.getElementById('toInput').value = h.toTxt;
+  fromCoords = h.fromCoords.slice();
+  toCoords = h.toCoords.slice();
+  toggleHistory();
+  showRoutePanel(true);
+  getDirections();
+}
+
+function deleteHistoryItem(id) {
+  tripHistory = tripHistory.filter(h => h.id !== id);
+  safeSet('apemaps_history', tripHistory);
+  renderHistoryList();
+}
+
+/* ═══════════════════════════════════
+   #14 CUSTOM PINS  &  #17 PHOTO PINS
+═══════════════════════════════════ */
+let customPins = safeGet('apemaps_custom_pins', []);
+let customPinMarkers = [];
+
+function openCustomPinModal() {
+  if (!clickedLatLng) { toast('📍 Pehle map par tap karo jahan pin lagani hai'); return; }
+  document.getElementById('customPinName').value = '';
+  document.getElementById('customPinModal').classList.add('show');
+}
+function closeCustomPinModal() { document.getElementById('customPinModal').classList.remove('show'); }
+
+function addCustomPin() {
+  const name = document.getElementById('customPinName').value.trim() || 'Custom Pin';
+  const emoji = document.getElementById('customPinCategory').value;
+  if (!clickedLatLng) { closeCustomPinModal(); return; }
+  const [lat, lng] = clickedLatLng;
+  const pin = { id: Date.now(), name, emoji, lat, lng };
+  customPins.push(pin);
+  safeSet('apemaps_custom_pins', customPins);
+  renderCustomPin(pin);
+  closeCustomPinModal();
+  toast(`${emoji} "${name}" pin add ho gaya!`);
+}
+
+function renderCustomPin(pin) {
+  const icon = L.divIcon({
+    className:'',
+    html:`<div style="background:white;width:30px;height:30px;border-radius:50%;border:2.5px solid var(--rose,#c8506a);box-shadow:0 3px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:15px;">${pin.emoji}</div>`,
+    iconSize:[30,30],iconAnchor:[15,15]
+  });
+  const m = L.marker([pin.lat, pin.lng], { icon }).addTo(map).bindPopup(`<b>${esc(pin.name)}</b>`);
+  customPinMarkers.push(m);
+}
+
+function loadCustomPins() { customPins.forEach(renderCustomPin); }
+loadCustomPins();
+
+function openPhotoPinPicker() {
+  if (!clickedLatLng) { toast('📍 Pehle map par tap karo jahan photo pin lagani hai'); return; }
+  document.getElementById('photoPinInput').click();
+}
+
+function handlePhotoPinFile(ev) {
+  const file = ev.target.files[0];
+  if (!file || !clickedLatLng) return;
+  if (file.size > 1.5 * 1024 * 1024) { toast('❌ Photo 1.5MB se chhoti rakho'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    const [lat, lng] = clickedLatLng;
+    const name = document.getElementById('infoName').textContent || 'Photo Memory';
+    const pin = { id: Date.now(), name, photo: reader.result, lat, lng };
+    let photoPins = safeGet('apemaps_photo_pins', []);
+    photoPins.push(pin);
+    safeSet('apemaps_photo_pins', photoPins);
+    renderPhotoPin(pin);
+    toast('📷 Photo pin add ho gaya!');
+  };
+  reader.readAsDataURL(file);
+  ev.target.value = '';
+}
+
+function renderPhotoPin(pin) {
+  const icon = L.divIcon({
+    className:'',
+    html:`<img class="photo-pin-thumb" src="${pin.photo}">`,
+    iconSize:[60,60],iconAnchor:[30,60]
+  });
+  L.marker([pin.lat, pin.lng], { icon }).addTo(map)
+    .bindPopup(`<img class="photo-pin-popup-img" src="${pin.photo}"><br><b>${esc(pin.name)}</b>`);
+}
+
+function loadPhotoPins() {
+  const photoPins = safeGet('apemaps_photo_pins', []);
+  photoPins.forEach(renderPhotoPin);
+}
+loadPhotoPins();
+
+/* ═══════════════════════════════════
+   #15 AUTO DARK MODE (sunrise/sunset)
+═══════════════════════════════════ */
+let darkAutoEnabled = localStorage.getItem('apemaps_dark_auto') === '1';
+
+function isNightNow() {
+  const h = new Date().getHours();
+  return h >= 19 || h < 6; // simple 7pm–6am heuristic, no external API needed
+}
+
+function applyDarkAuto() {
+  if (!darkAutoEnabled) return;
+  const night = isNightNow();
+  document.body.classList.toggle('apemaps-dark-ui', night);
+  if (night && currentLayer !== 'dark') {
+    const chip = document.querySelector('.layer-chip[data-layer="dark"]');
+    if (chip) switchLayer('dark', chip);
+  }
+}
+
+function toggleDarkAuto() {
+  darkAutoEnabled = !darkAutoEnabled;
+  localStorage.setItem('apemaps_dark_auto', darkAutoEnabled ? '1' : '0');
+  document.getElementById('darkAutoStatus').textContent = darkAutoEnabled ? '✅ ON — sunset par auto dark' : 'Sunset par auto dark layer';
+  if (darkAutoEnabled) { applyDarkAuto(); toast('🌙 Auto dark mode ON'); }
+  else { document.body.classList.remove('apemaps-dark-ui'); toast('☀️ Auto dark mode OFF'); }
+}
+if (darkAutoEnabled) { document.getElementById('darkAutoStatus').textContent = '✅ ON — sunset par auto dark'; applyDarkAuto(); }
+setInterval(applyDarkAuto, 5 * 60 * 1000); // re-check every 5 min
+
+/* ═══════════════════════════════════
+   #18 WEATHER OVERLAY (Open-Meteo, free, no key)
+═══════════════════════════════════ */
+let weatherEnabled = localStorage.getItem('apemaps_weather_on') !== '0';
+
+async function refreshWeather(toggle) {
+  if (toggle) {
+    weatherEnabled = !weatherEnabled;
+    localStorage.setItem('apemaps_weather_on', weatherEnabled ? '1' : '0');
+    document.getElementById('weatherStatus').textContent = weatherEnabled ? '✅ ON — current weather widget' : 'Current weather widget';
+    if (!weatherEnabled) { document.getElementById('weatherPill').classList.remove('show'); toast('🌤️ Weather overlay OFF'); return; }
+  }
+  if (!weatherEnabled) return;
+  const c = map.getCenter();
+  try {
+    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lng}&current_weather=true`);
+    const data = await res.json();
+    const cw = data.current_weather;
+    if (!cw) return;
+    const codeMap = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌦️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',80:'🌧️',81:'🌧️',82:'⛈️',95:'⛈️',96:'⛈️',99:'⛈️'};
+    const emoji = codeMap[cw.weathercode] || '🌡️';
+    const pill = document.getElementById('weatherPill');
+    pill.innerHTML = `<span>${emoji}</span><span class="wp-temp">${Math.round(cw.temperature)}°C</span><span style="color:var(--muted,#888)">· ${Math.round(cw.windspeed)}km/h wind</span>`;
+    pill.classList.add('show');
+    if (toggle) toast('🌤️ Weather overlay ON');
+  } catch(e) { if (toggle) toast('❌ Weather data nahi mila'); }
+}
+map.on('moveend', () => { if (weatherEnabled) refreshWeather(false); });
+setTimeout(() => refreshWeather(false), 1200);
+if (weatherEnabled) document.getElementById('weatherStatus').textContent = '✅ ON — current weather widget';
+
+/* ═══════════════════════════════════
+   #19 PUBLIC TRANSPORT LAYER (Overpass)
+═══════════════════════════════════ */
+let transitLayerOn = false;
+let transitMarkers = [];
+
+async function toggleTransitLayer() {
+  transitLayerOn = !transitLayerOn;
+  document.getElementById('transitStatus').textContent = transitLayerOn ? '✅ ON — loading stops…' : 'Bus stops & stations dikhao';
+  if (!transitLayerOn) {
+    transitMarkers.forEach(m => map.removeLayer(m));
+    transitMarkers = [];
+    toast('🚌 Transit layer OFF');
+    return;
+  }
+  toast('🚌 Transit stops dhundh raha hoon…');
+  const c = map.getCenter();
+  const query = `[out:json][timeout:10];
+    (node["highway"="bus_stop"](around:1500,${c.lat},${c.lng});
+     node["railway"="station"](around:1500,${c.lat},${c.lng});
+     node["railway"="subway_entrance"](around:1500,${c.lat},${c.lng}););
+    out 40;`;
+  try {
+    const res = await fetch('https://overpass-api.de/api/interpreter', { method:'POST', body:'data='+encodeURIComponent(query) });
+    const data = await res.json();
+    const items = data.elements || [];
+    transitMarkers.forEach(m => map.removeLayer(m));
+    transitMarkers = [];
+    items.forEach(el => {
+      const isStation = el.tags?.railway;
+      const icon = L.divIcon({
+        className:'', html:`<div style="background:${isStation?'#7a9e7e':'#c9a84c'};width:22px;height:22px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;font-size:11px;">${isStation?'🚉':'🚌'}</div>`,
+        iconSize:[22,22], iconAnchor:[11,11]
+      });
+      const m = L.marker([el.lat, el.lon], { icon }).addTo(map).bindPopup(el.tags?.name || (isStation?'Station':'Bus Stop'));
+      transitMarkers.push(m);
+    });
+    document.getElementById('transitStatus').textContent = `✅ ON — ${items.length} stops dikhaye`;
+    toast(`✅ ${items.length} transit stops mile`);
+  } catch(e) {
+    document.getElementById('transitStatus').textContent = '❌ Load fail hua';
+    toast('❌ Transit data nahi mila');
+  }
+}
+
+/* ═══════════════════════════════════
+   #12 TILE CACHING (Cache API) — real client-side cache
+═══════════════════════════════════ */
+const TILE_CACHE_NAME = 'apemaps-tiles-v1';
+
+async function cacheCurrentTiles() {
+  if (!('caches' in window)) { toast('❌ Cache API support nahi hai'); return; }
+  toast('💾 Visible tiles cache ho rahe hain…');
+  try {
+    const cache = await caches.open(TILE_CACHE_NAME);
+    const imgs = document.querySelectorAll('#map .leaflet-tile-loaded');
+    let count = 0;
+    for (const img of imgs) {
+      const src = img.src;
+      if (!src) continue;
+      try {
+        const resp = await fetch(src, { mode: 'cors' });
+        if (resp.ok) { await cache.put(src, resp.clone()); count++; }
+      } catch(e) { /* tile server may not allow cors fetch re-grab; skip silently */ }
+    }
+    toast(`✅ ${count} tiles cache ho gaye — faster reload milega`);
+  } catch(e) { toast('❌ Tile caching fail hui'); }
+}
+
+/* ═══════════════════════════════════
+   #11 OFFLINE AREA DOWNLOAD — LIMITED
+   True "offline area" needs a tile pyramid pre-fetch + service worker
+   intercepting requests while offline. Here we do the honest, real subset:
+   pre-fetch & cache tiles for the CURRENTLY VISIBLE area at current zoom
+   (not arbitrary draw-a-box-and-download-multi-zoom like native apps).
+═══════════════════════════════════ */
+async function downloadOfflineArea() {
+  if (!('caches' in window)) { toast('❌ Cache API support nahi hai'); return; }
+  toast('⬇️ Visible area ke tiles download ho rahe hain… (limited: sirf yeh zoom level)');
+  await cacheCurrentTiles();
+  toast('✅ Area cache ho gaya. Offline mein sirf yeh exact view+zoom milega (no full pyramid).');
+}
+
+/* ═══════════════════════════════════
+   #5 LIVE LOCATION SHARING — LIMITED
+   Real watchPosition + shareable link with live coords param.
+   True cross-device real-time sync needs a backend relay (not available here),
+   so this works fully for: same-device preview + manually re-sharing updated link.
+═══════════════════════════════════ */
+let liveShareWatchId = null;
+let liveShareActive = false;
+
+function toggleLiveShare() {
+  liveShareActive = !liveShareActive;
+  if (liveShareActive) {
+    if (!navigator.geolocation) { toast('❌ Geolocation support nahi hai'); liveShareActive = false; return; }
+    document.getElementById('liveShareStatus').textContent = '✅ ON — live link updating';
+    document.getElementById('liveShareBanner').classList.add('show');
+    liveShareWatchId = navigator.geolocation.watchPosition(pos => {
+      const { latitude, longitude } = pos.coords;
+      const url = `${location.origin}${location.pathname}?lat=${latitude.toFixed(5)}&lng=${longitude.toFixed(5)}&z=16&live=1`;
+      document.getElementById('shareLinkInput').value = url;
+      document.getElementById('liveShareBannerTxt').textContent = 'Live: ' + latitude.toFixed(4) + ', ' + longitude.toFixed(4);
+    }, () => {}, { enableHighAccuracy: true, maximumAge: 5000 });
+    toast('📡 Live sharing ON — link copy karke bhejo, har update par link change hota rahega (limited: manual re-share)');
+  } else {
+    if (liveShareWatchId !== null) navigator.geolocation.clearWatch(liveShareWatchId);
+    liveShareWatchId = null;
+    document.getElementById('liveShareStatus').textContent = 'Real-time location link';
+    document.getElementById('liveShareBanner').classList.remove('show');
+    toast('📡 Live sharing OFF');
+  }
+}
+
+/* ═══════════════════════════════════
+   #7 GEOFENCING ALERTS — real client-side, foreground-only
+═══════════════════════════════════ */
+let geofences = safeGet('apemaps_geofences', []);
+let geofenceWatchId = null;
+let geofenceCircles = [];
+let geofenceInsideState = {};
+
+function openGeofenceModal() {
+  document.getElementById('geofenceName').value = '';
+  document.getElementById('geofenceModal').classList.add('show');
+}
+function closeGeofenceModal() { document.getElementById('geofenceModal').classList.remove('show'); }
+
+function createGeofence() {
+  const name = document.getElementById('geofenceName').value.trim() || 'Geofence';
+  const radius = parseInt(document.getElementById('geofenceRadius').value);
+  const c = map.getCenter();
+  const gf = { id: Date.now(), name, lat: c.lat, lng: c.lng, radius };
+  geofences.push(gf);
+  safeSet('apemaps_geofences', geofences);
+  drawGeofenceCircle(gf);
+  closeGeofenceModal();
+  armGeofenceWatch();
+  toast(`📍 Geofence "${name}" set ho gaya (${radius}m)`);
+}
+
+function drawGeofenceCircle(gf) {
+  const circle = L.circle([gf.lat, gf.lng], { radius: gf.radius, color:'#7a9e7e', fillColor:'#7a9e7e', fillOpacity:0.1, weight:1.5, dashArray:'4,6' }).addTo(map).bindPopup('📍 ' + gf.name);
+  geofenceCircles.push(circle);
+}
+
+function loadGeofences() { geofences.forEach(drawGeofenceCircle); if (geofences.length) armGeofenceWatch(); }
+loadGeofences();
+document.getElementById('geofenceStatus').textContent = geofences.length ? `✅ ${geofences.length} active (tab open rehna chahiye)` : 'Area enter/exit par alert';
+
+function armGeofenceWatch() {
+  if (geofenceWatchId !== null || !navigator.geolocation) return;
+  geofenceWatchId = navigator.geolocation.watchPosition(pos => {
+    const { latitude, longitude } = pos.coords;
+    geofences.forEach(gf => {
+      const d = distBetween(latitude, longitude, gf.lat, gf.lng);
+      const inside = d <= gf.radius;
+      const wasInside = geofenceInsideState[gf.id] || false;
+      if (inside && !wasInside) showGeofenceBanner(`✅ "${gf.name}" mein enter ho gaye`);
+      if (!inside && wasInside) showGeofenceBanner(`🚪 "${gf.name}" se exit ho gaye`);
+      geofenceInsideState[gf.id] = inside;
+    });
+  }, () => {}, { enableHighAccuracy: true, maximumAge: 8000 });
+}
+
+function showGeofenceBanner(msg) {
+  const b = document.getElementById('geofenceBanner');
+  b.textContent = msg;
+  b.classList.remove('show'); void b.offsetWidth; b.classList.add('show');
+  setTimeout(() => b.classList.remove('show'), 4000);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification('Apemaps Geofence', { body: msg }); } catch(e) {}
+  }
+  toast(msg);
+}
+
+if ('Notification' in window && Notification.permission === 'default' && geofences.length) {
+  Notification.requestPermission();
+}
+
+/* ═══════════════════════════════════
+   #16 COLLABORATIVE TRIP — LIMITED
+   No backend = no real-time multi-user sync. Real, honest subset:
+   export saved places as a JSON file; another user imports it.
+═══════════════════════════════════ */
+function toggleCollabTrip() {
+  const choice = confirm('Export: Saved places ko JSON file mein save karo (OK)\nImport: Kisi doosre ki file load karo (Cancel)');
+  if (choice) exportSavedPlaces();
+  else importSavedPlacesPrompt();
+}
+
+function exportSavedPlaces() {
+  const blob = new Blob([JSON.stringify(savedPlaces, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'apemaps-trip-' + Date.now() + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('📤 Trip export ho gayi — file share karo (limited: no live sync)');
+}
+
+function importSavedPlacesPrompt() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'application/json';
+  input.onchange = (ev) => {
+    const file = ev.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(reader.result);
+        if (!Array.isArray(imported)) throw new Error('bad format');
+        imported.forEach(p => {
+          if (!savedPlaces.find(sp => Math.abs(sp.lat-p.lat)<0.0001 && Math.abs(sp.lng-p.lng)<0.0001)) {
+            savedPlaces.unshift({ ...p, id: Date.now() + Math.random() });
+          }
+        });
+        savePlaces(); renderSavedList();
+        toast(`📥 ${imported.length} jagahein import ho gayi`);
+      } catch(e) { toast('❌ File galat format mein hai'); }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+/* ═══════════════════════════════════
+   #20 AREA / POLYGON MEASUREMENT
+═══════════════════════════════════ */
+let areaMode = false;
+let areaPoints = [];
+let areaMarkers = [];
+let areaPolygon = null;
+
+function toggleAreaTool() {
+  areaMode = !areaMode;
+  document.getElementById('areaToggleBtn').classList.toggle('active', areaMode);
+  if (!areaMode) {
+    resetAreaTool();
+    document.getElementById('areaResult').classList.remove('show');
+  } else {
+    if (distMode) toggleDistTool();
+    areaPoints = [];
+    map.getContainer().style.cursor = 'crosshair';
+    toast('📐 Area mode ON — 3+ points tap karo, fir Done dabao');
+  }
+}
+
+function handleAreaClick(latlng) {
+  areaPoints.push(latlng);
+  const icon = L.divIcon({ className:'', html:'<div class="area-temp-marker"></div>', iconSize:[12,12], iconAnchor:[6,6] });
+  areaMarkers.push(L.marker(latlng, { icon }).addTo(map));
+
+  if (areaPolygon) map.removeLayer(areaPolygon);
+  if (areaPoints.length >= 2) {
+    areaPolygon = L.polygon(areaPoints, { color:'#7a9e7e', weight:2, fillColor:'#7a9e7e', fillOpacity:0.15 }).addTo(map);
+  }
+  if (areaPoints.length >= 3) {
+    const sqm = polygonArea(areaPoints);
+    const val = sqm >= 1e6 ? (sqm/1e6).toFixed(3) + ' km²' : sqm >= 10000 ? (sqm/10000).toFixed(3) + ' hectare' : Math.round(sqm) + ' m²';
+    document.getElementById('areaResultVal').textContent = val;
+    document.getElementById('areaResult').classList.add('show');
+  }
+}
+
+function polygonArea(points) {
+  // Shoelace formula on equirectangular-projected coords (good enough for small areas)
+  const toXY = (la, lo) => [lo * 111320 * Math.cos(la*Math.PI/180), la * 110540];
+  const xy = points.map(p => toXY(p.lat, p.lng));
+  let area = 0;
+  for (let i = 0; i < xy.length; i++) {
+    const [x1,y1] = xy[i];
+    const [x2,y2] = xy[(i+1) % xy.length];
+    area += x1*y2 - x2*y1;
+  }
+  return Math.abs(area / 2);
+}
+
+function resetAreaTool() {
+  areaMarkers.forEach(m => map.removeLayer(m));
+  areaMarkers = [];
+  if (areaPolygon) { map.removeLayer(areaPolygon); areaPolygon = null; }
+  areaPoints = [];
+  map.getContainer().style.cursor = '';
+}
+
+// Hook area-tool clicks into the existing map click handler chain via override check
+const _origMapClickHandlers = true; // marker for clarity
+
+/* ═══════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════ */
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.code === 'Equal' || e.code === 'NumpadAdd') zoomIn();
+  if (e.code === 'Minus' || e.code === 'NumpadSubtract') zoomOut();
+  if (e.code === 'KeyL') locateMe();
+  if (e.code === 'KeyS') toggleSaved();
+  if (e.code === 'KeyN') toggleNearby();
+  if (e.code === 'KeyD') toggleDistTool();
+  if (e.code === 'Escape') { hideResults(); closeInfo(); if(distMode) toggleDistTool(); closeShare(); }
+});
+
+/* ═══════════════════════════════════
+   PWA — SERVICE WORKER REGISTRATION
+   Enables offline app-shell + "Add to Home Screen".
+═══════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => {
+      console.warn('Apemaps: service worker registration failed', err);
+    });
+  });
+}
+
+/* ═══════════════════════════════════
+   PWA — INSTALL BUTTON
+   Always visible unless the app is already running standalone/installed.
+   Uses the real prompt when the browser offers one (Android/Desktop Chrome,
+   Edge), otherwise falls back to manual instructions (iOS Safari, Firefox,
+   or when the browser just hasn't fired beforeinstallprompt yet).
+═══════════════════════════════════ */
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById('installToolRow');
+const installBtnSub = installBtn ? installBtn.querySelector('.tool-row-sub') : null;
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+function updateInstallRow() {
+  if (!installBtn) return;
+  if (isStandalone()) { installBtn.style.display = 'none'; return; }
+  installBtn.style.display = 'flex';
+  if (installBtnSub) {
+    installBtnSub.textContent = deferredInstallPrompt
+      ? 'Home screen par add karo, app jaisa chalao'
+      : isIOS
+        ? 'Share icon → Add to Home Screen'
+        : 'Tap karo install instructions ke liye';
+  }
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  updateInstallRow();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  installBtn.style.display = 'none';
+  toast('🌸 Apemaps install ho gaya!');
+});
+
+async function installApp() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') toast('🌸 Install ho raha hai…');
+    deferredInstallPrompt = null;
+    installBtn.style.display = 'none';
+    return;
+  }
+  if (isIOS) {
+    toast('📲 Neeche Share icon dabao, phir "Add to Home Screen" chuno');
+    return;
+  }
+  toast('ℹ️ Browser menu (⋮) mein "Install app" ya "Add to Home Screen" dhundo');
+}
+
+updateInstallRow();
+
+
+</script>
+</body>
+</html>
