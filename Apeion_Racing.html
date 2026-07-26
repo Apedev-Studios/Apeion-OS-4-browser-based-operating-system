@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>APEION VELOCITY 3D</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{background:#000;overflow:hidden;touch-action:none;font-family:'Arial Black',Arial,sans-serif}
+#cv{display:block;width:100vw;height:100vh}
+#hud{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
+#hspd{position:absolute;top:14px;right:14px;text-align:right}
+#hspd .n{font-size:clamp(40px,8vw,68px);font-weight:900;color:#00f0ff;text-shadow:0 0 20px #00f0ff,0 0 40px #00f0ff55;line-height:1}
+#hspd .l{font-size:9px;letter-spacing:5px;color:#00f0ff66}
+#hlap{position:absolute;top:14px;left:50%;transform:translateX(-50%);text-align:center}
+#hlap .ll{font-size:9px;letter-spacing:4px;color:#ff4e00;text-shadow:0 0 8px #ff4e00}
+#hlap .t{font-size:clamp(20px,4.5vw,36px);font-weight:900;color:#fff;text-shadow:0 0 12px #fff8;line-height:1.15}
+#hlap .b{font-size:9px;color:#00ff88;letter-spacing:2px}
+#hpos{position:absolute;top:14px;left:14px}
+#hpos .l{font-size:8px;letter-spacing:3px;color:#ff990077}
+#hpos .n{font-size:clamp(30px,6vw,50px);font-weight:900;color:#ff4e00;text-shadow:0 0 18px #ff4e00;line-height:1}
+#hgear{position:absolute;bottom:168px;left:14px}
+#hgear .l{font-size:8px;letter-spacing:3px;color:#ffcc0066}
+#hgear .n{font-size:clamp(28px,5.5vw,46px);font-weight:900;color:#ffcc00;text-shadow:0 0 15px #ffcc00;line-height:1}
+#rpm-bar{position:absolute;bottom:152px;left:50%;transform:translateX(-50%);display:flex;gap:2px;align-items:flex-end;width:min(280px,64vw)}
+.rs{flex:1;border-radius:2px;min-width:5px;transition:opacity .04s}
+#bbar{position:absolute;bottom:152px;right:14px;text-align:right}
+#bbar .l{font-size:8px;letter-spacing:3px;color:#00f0ff55}
+#btrack{width:70px;height:7px;background:#ffffff11;border:1px solid #00f0ff33;border-radius:4px;overflow:hidden;margin-top:2px}
+#bfill{height:100%;background:linear-gradient(90deg,#0050ff,#00f0ff,#fff);border-radius:4px;transition:width .08s}
+#fx{position:fixed;inset:0;pointer-events:none;z-index:8;opacity:0;transition:opacity .2s}
+/* MOBILE CONTROLS */
+#ctrl{position:fixed;bottom:0;left:0;width:100%;height:152px;z-index:30;display:flex;justify-content:space-between;align-items:flex-end;padding:0 12px 14px;pointer-events:none}
+#jw{width:148px;height:130px;display:flex;align-items:center;justify-content:center;pointer-events:all}
+#jb{width:116px;height:116px;border-radius:50%;border:2px solid #00f0ff44;background:rgba(0,12,35,.65);backdrop-filter:blur(6px);box-shadow:0 0 22px #00f0ff18,inset 0 0 18px #00f0ff0a;position:relative;display:flex;align-items:center;justify-content:center}
+#jk{width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 38% 35%,#00f0ffcc,#0050ff88);border:2px solid #00f0ffcc;box-shadow:0 0 18px #00f0ff88;position:absolute;left:36px;top:36px}
+.ja{position:absolute;color:#00f0ff44;font-size:15px;font-weight:900}
+#jal{left:5px;top:50%;transform:translateY(-50%)}
+#jar{right:5px;top:50%;transform:translateY(-50%)}
+#pds{display:flex;flex-direction:column;gap:7px;pointer-events:all;align-items:flex-end}
+.btn{border-radius:13px;display:flex;align-items:center;justify-content:center;font-weight:900;letter-spacing:2px;pointer-events:all;border:2px solid transparent;backdrop-filter:blur(8px);cursor:pointer;font-family:'Arial Black',sans-serif;font-size:10px;transition:transform .08s}
+.btn:active{transform:scale(.93)}
+#bgas{width:88px;height:56px;background:rgba(0,255,80,.1);border-color:#00ff5044;color:#00ff80;text-shadow:0 0 8px #00ff80}
+#bgas.on{background:rgba(0,255,80,.3);border-color:#00ff80;box-shadow:0 0 28px #00ff8077;color:#fff}
+#bbrk{width:88px;height:56px;background:rgba(255,50,0,.1);border-color:#ff320044;color:#ff6644;text-shadow:0 0 8px #ff4422}
+#bbrk.on{background:rgba(255,50,0,.3);border-color:#ff3200;box-shadow:0 0 28px #ff320077;color:#fff}
+#bbst{width:88px;height:38px;background:rgba(0,180,255,.1);border-color:#00bbff33;color:#00bbff}
+#bbst.on{background:rgba(0,180,255,.38);border-color:#00bbff;box-shadow:0 0 32px #00bbffaa;color:#fff}
+/* SCREENS */
+#ss{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;background:#fff}
+.sbg{position:absolute;inset:0;background:
+  radial-gradient(circle at 15% 20%,#ff5ea033 0%,transparent 45%),
+  radial-gradient(circle at 85% 15%,#00d4ff33 0%,transparent 45%),
+  radial-gradient(circle at 20% 85%,#ffcc0033 0%,transparent 45%),
+  radial-gradient(circle at 85% 85%,#5affab33 0%,transparent 45%),
+  radial-gradient(circle at 50% 50%,#a066ff22 0%,transparent 55%),
+  #ffffff}
+.sc{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%}
+.gt{font-size:clamp(32px,8vw,76px);font-weight:900;letter-spacing:5px;color:#1a1a2e;text-align:center;text-shadow:0 0 28px #ff4e0055;animation:gp 2s ease-in-out infinite alternate}
+@keyframes gp{from{text-shadow:0 0 28px #ff4e0055,0 0 55px #ff4e0022}to{text-shadow:0 0 45px #00c0f055,0 0 90px #00c0f022}}
+.gs{font-size:clamp(8px,2vw,13px);letter-spacing:7px;color:#1a1a2e88;margin-top:5px}
+.cc{display:flex;gap:10px;margin-top:26px;flex-wrap:wrap;justify-content:center}
+.cd{border:1px solid #00000022;padding:13px 16px;text-align:center;cursor:pointer;pointer-events:all;border-radius:8px;background:rgba(255,255,255,.55);box-shadow:0 2px 12px #0000000d;transition:all .3s}
+.cd.sl,.cd:active{border-color:#ff4e00;background:rgba(255,78,0,.1);box-shadow:0 0 18px #ff4e0033}
+.cn{font-size:11px;font-weight:900;letter-spacing:2px;color:#ff4e00;text-shadow:0 0 7px #ff4e0033;margin-bottom:5px}
+.cs{font-size:8px;color:#1a1a2e99;line-height:2;letter-spacing:1px}
+.gb{margin-top:28px;padding:14px 52px;background:transparent;border:2px solid #00b8e0;color:#00b8e0;font-size:13px;font-weight:900;letter-spacing:4px;cursor:pointer;pointer-events:all;border-radius:4px;font-family:'Arial Black',sans-serif;text-shadow:0 0 8px #00b8e033;box-shadow:0 0 18px #00b8e022;transition:all .3s}
+.gb:hover,.gb:active{background:#00b8e0;color:#fff;box-shadow:0 0 35px #00b8e055}
+#cds{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:50;pointer-events:none}
+#cdn{font-size:clamp(88px,18vw,145px);font-weight:900;animation:cp .38s ease-out}
+@keyframes cp{from{transform:scale(1.7);opacity:0}to{transform:scale(1);opacity:1}}
+#fsc{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;z-index:100;background:rgba(0,0,0,.93)}
+.ft{font-size:clamp(32px,7vw,58px);font-weight:900;color:#ffcc00;text-shadow:0 0 28px #ffcc00;animation:gp 1.5s ease-in-out infinite alternate}
+#fst{margin-top:22px;text-align:center;font-size:clamp(13px,2.8vw,17px);color:#fff8;line-height:2.7;letter-spacing:2px}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud">
+  <div id="hpos"><div class="l">POS</div><div class="n" id="hpos-n">1</div></div>
+  <div id="hlap"><div class="ll" id="hlap-l">LAP 1/3</div><div class="t" id="htim">0:00.000</div><div class="b" id="hbst">BEST: --:--.---</div></div>
+  <div id="hspd"><div class="n" id="hspd-n">0</div><div class="l">KM/H</div></div>
+  <div id="hgear"><div class="l">GEAR</div><div class="n" id="hgear-n">1</div></div>
+  <div id="rpm-bar"></div>
+  <div id="bbar"><div class="l">BOOST</div><div id="btrack"><div id="bfill" style="width:100%"></div></div></div>
+</div>
+<div id="fx"></div>
+<div id="ctrl">
+  <div id="jw"><div id="jb"><span class="ja" id="jal">◀</span><span class="ja" id="jar">▶</span><div id="jk"></div></div></div>
+  <div id="pds">
+    <div class="btn" id="bbst">⚡ BOOST</div>
+    <div class="btn" id="bgas">ACCEL ▲</div>
+    <div class="btn" id="bbrk">BRAKE ▼</div>
+  </div>
+</div>
+<div id="ss">
+  <div class="sbg"></div>
+  <div class="sc">
+    <div class="gt">APEION VELOCITY</div>
+    <div class="gs">ULTRA 3D RACING</div>
+    <div class="cc">
+      <div class="cd sl" onclick="pc(0,this)"><div class="cn">PHANTOM X</div><div class="cs">SPEED   ████████░░<br>ACCEL   ███████░░░<br>GRIP    █████████░</div></div>
+      <div class="cd" onclick="pc(1,this)"><div class="cn">VIPER RS</div><div class="cs">SPEED   ██████░░░░<br>ACCEL   ██████████<br>GRIP    ████████░░</div></div>
+      <div class="cd" onclick="pc(2,this)"><div class="cn">TITAN GT</div><div class="cs">SPEED   ██████████<br>ACCEL   █████░░░░░<br>GRIP    ██████░░░░</div></div>
+    </div>
+    <button class="gb" onclick="startGame()">🏁 START RACE</button>
+  </div>
+</div>
+<div id="cds"><div id="cdn" style="color:#ff4e00;text-shadow:0 0 40px #ff4e00">3</div></div>
+<div id="fsc"><div class="ft">🏆 RACE COMPLETE!</div><div id="fst"></div><button class="gb" style="margin-top:26px;pointer-events:all" onclick="restart()">🔄 RACE AGAIN</button></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// APEION VELOCITY 3D — Pure WebGL, zero dependencies
+// All errors fixed: guards on trackSpline, lazy render
+// ═══════════════════════════════════════════════════════
+const cv = document.getElementById('cv');
+const gl = cv.getContext('webgl',{antialias:true,alpha:false}) ||
+           cv.getContext('experimental-webgl',{antialias:true,alpha:false});
+if(!gl){ document.body.innerHTML='<div style="color:#fff;text-align:center;padding:40px;font-size:24px">WebGL not supported on your device 😢</div>'; }
+
+let W=cv.width=innerWidth, H=cv.height=innerHeight;
+window.addEventListener('resize',()=>{ W=cv.width=innerWidth; H=cv.height=innerHeight; gl.viewport(0,0,W,H); rebuildProj(); });
+
+// ── MATH ──
+function m4(){ return new Float32Array([1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]); }
+function m4Persp(fov,asp,n,f){
+  const m=m4(), t=1/Math.tan(fov*.5);
+  m[0]=t/asp; m[5]=t; m[10]=(f+n)/(n-f); m[11]=-1; m[14]=2*f*n/(n-f); m[15]=0; return m;
+}
+function m4LookAt(ex,ey,ez, cx,cy,cz, ux,uy,uz){
+  let fx=cx-ex,fy=cy-ey,fz=cz-ez; let fl=Math.sqrt(fx*fx+fy*fy+fz*fz)||1; fx/=fl;fy/=fl;fz/=fl;
+  let rx=fy*uz-fz*uy, ry=fz*ux-fx*uz, rz=fx*uy-fy*ux; let rl=Math.sqrt(rx*rx+ry*ry+rz*rz)||1; rx/=rl;ry/=rl;rz/=rl;
+  let bx=ry*fz-rz*fy, by=rz*fx-rx*fz, bz=rx*fy-ry*fx;
+  const m=m4();
+  m[0]=rx;m[4]=ry;m[8]=rz;
+  m[1]=bx;m[5]=by;m[9]=bz;
+  m[2]=-fx;m[6]=-fy;m[10]=-fz;
+  m[12]=-(rx*ex+ry*ey+rz*ez);
+  m[13]=-(bx*ex+by*ey+bz*ez);
+  m[14]=(fx*ex+fy*ey+fz*ez);
+  m[15]=1; return m;
+}
+function m4Mul(a,b){
+  const r=m4();
+  for(let i=0;i<4;i++) for(let j=0;j<4;j++){
+    r[j*4+i]=0; for(let k=0;k<4;k++) r[j*4+i]+=a[k*4+i]*b[j*4+k];
+  } return r;
+}
+function m4T(x,y,z){const m=m4();m[12]=x;m[13]=y;m[14]=z;return m;}
+function m4RY(a){const m=m4(),c=Math.cos(a),s=Math.sin(a);m[0]=c;m[2]=s;m[8]=-s;m[10]=c;return m;}
+function m4RX(a){const m=m4(),c=Math.cos(a),s=Math.sin(a);m[5]=c;m[6]=-s;m[9]=s;m[10]=c;return m;}
+function m4RZ(a){const m=m4(),c=Math.cos(a),s=Math.sin(a);m[0]=c;m[1]=-s;m[4]=s;m[5]=c;return m;}
+function norm3(x,y,z){const l=Math.sqrt(x*x+y*y+z*z)||1;return[x/l,y/l,z/l];}
+function cross3(ax,ay,az,bx,by,bz){return[ay*bz-az*by, az*bx-ax*bz, ax*by-ay*bx];}
+
+// ── SHADERS ──
+function mkSh(t,s){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(sh));return sh;}
+function mkProg(vs,fs){const p=gl.createProgram();gl.attachShader(p,mkSh(gl.VERTEX_SHADER,vs));gl.attachShader(p,mkSh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))console.error(gl.getProgramInfoLog(p));return p;}
+
+const PROG3D = mkProg(
+`attribute vec3 aP;attribute vec3 aN;attribute vec3 aC;
+uniform mat4 uMVP;uniform mat4 uM;
+varying vec3 vP;varying vec3 vN;varying vec3 vC;
+void main(){vec4 wp=uM*vec4(aP,1.);vP=wp.xyz;vN=normalize((uM*vec4(aN,0.)).xyz);vC=aC;gl_Position=uMVP*vec4(aP,1.);}`,
+`precision mediump float;
+uniform vec3 uEye;uniform vec3 uLD;uniform vec3 uLC;uniform vec3 uAmb;uniform vec3 uEmi;uniform float uMet;uniform float uRgh;uniform float uFog;
+varying vec3 vP;varying vec3 vN;varying vec3 vC;
+void main(){
+  vec3 N=normalize(vN);vec3 L=normalize(uLD);vec3 V=normalize(uEye-vP);vec3 H=normalize(L+V);
+  float d=max(dot(N,L),0.);float sp=pow(max(dot(N,H),0.),max(2.,64.*(1.-uRgh)))*(1.-uRgh)*uMet;
+  float rim=pow(1.-max(dot(N,V),0.),3.)*.4;
+  vec3 col=vC*(uAmb+uLC*d)+uLC*sp+vec3(.05,.1,.3)*rim+uEmi;
+  float fog=clamp(1.-exp(-uFog*dot(vP-uEye,vP-uEye)),0.,1.);
+  col=mix(col,vec3(0.,.01,.04),fog);
+  gl_FragColor=vec4(col,1.);}`
+);
+
+const PROGSKY = mkProg(
+`attribute vec2 aP;varying vec2 vU;void main(){vU=aP*.5+.5;gl_Position=vec4(aP,.9999,1.);}`,
+`precision mediump float;
+varying vec2 vU;uniform float uT;uniform float uYaw;
+void main(){
+  float y=vU.y;
+  vec3 c=mix(vec3(.0,.04,.14),mix(vec3(.0,.02,.08),vec3(.0,.005,.025),y*y),y);
+  vec2 uv=vU*vec2(80.,40.)+vec2(uYaw*10.,0.);
+  vec2 gi=floor(uv);vec2 lf=fract(uv);
+  for(int dx=-1;dx<=1;dx++) for(int dy=-1;dy<=1;dy++){
+    vec2 g=gi+vec2(float(dx),float(dy));
+    float h=fract(sin(dot(g,vec2(127.1,311.7)))*43758.5);
+    float b=fract(sin(dot(g,vec2(269.5,183.3)))*43758.5);
+    float tw=.5+.5*sin(uT*2.+b*6.28);
+    vec2 p=lf-vec2(float(dx),float(dy))-.5+vec2(h,b);
+    if(h>.97&&y>.25) c+=vec3(.85,.9,1.)*tw*smoothstep(.07,.0,length(p));
+  }
+  float mx=mod(uYaw*.08+.6,1.);float md=length(vU-vec2(mx,.78));
+  c+=vec3(1.,.95,.85)*(smoothstep(.045,.0,md)+smoothstep(.22,.0,md)*.28);
+  gl_FragColor=vec4(c,1.);}`
+);
+
+const PROGPART = mkProg(
+`attribute vec3 aP;attribute float aSz;attribute vec3 aC;attribute float aA;
+uniform mat4 uVP;varying vec3 vC;varying float vA;
+void main(){gl_Position=uVP*vec4(aP,1.);gl_PointSize=aSz*280./gl_Position.w;vC=aC;vA=aA;}`,
+`precision mediump float;varying vec3 vC;varying float vA;
+void main(){float d=length(gl_PointCoord-.5)*2.;gl_FragColor=vec4(vC,smoothstep(1.,0.,d)*vA);}`
+);
+
+// ── BUFFERS ──
+function mkBuf(data,dyn){
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER,data instanceof Float32Array?data:new Float32Array(data),dyn?gl.DYNAMIC_DRAW:gl.STATIC_DRAW);
+  return b;
+}
+function mkIBuf(data){
+  const b=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,b);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(data),gl.STATIC_DRAW);
+  return b;
+}
+function attr(prog,name,buf,sz,stride,off){
+  const loc=gl.getAttribLocation(prog,name);
+  if(loc<0)return;
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.enableVertexAttribArray(loc);
+  gl.vertexAttribPointer(loc,sz,gl.FLOAT,false,stride*4,off*4);
+}
+
+let projMat=m4Persp(Math.PI/3,W/H,.1,1200);
+function rebuildProj(){projMat=m4Persp(Math.PI/3,W/H,.1,1200);}
+
+// Sky quad
+const skyBuf=mkBuf([-1,-1,1,-1,1,1,-1,1]);
+const skyIBuf=mkIBuf([0,1,2,0,2,3]);
+
+// ── GEOMETRY HELPERS ──
+// Vertex layout: x,y,z, nx,ny,nz, r,g,b  (stride=9)
+function face(V,I,v0,v1,v2,v3,r,g,b){
+  const ax=v1[0]-v0[0],ay=v1[1]-v0[1],az=v1[2]-v0[2];
+  const bx=v2[0]-v0[0],by=v2[1]-v0[1],bz=v2[2]-v0[2];
+  let [nx,ny,nz]=cross3(ax,ay,az,bx,by,bz);
+  const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;nx/=nl;ny/=nl;nz/=nl;
+  const base=V.length/9;
+  [v0,v1,v2,v3].forEach(v=>V.push(v[0],v[1],v[2],nx,ny,nz,r,g,b));
+  I.push(base,base+1,base+2,base,base+2,base+3);
+}
+function box(V,I,x,y,z,sx,sy,sz,r,g,b){
+  const hx=sx/2,hy=sy/2,hz=sz/2;
+  const faces=[
+    [[-hx,-hy,hz],[hx,-hy,hz],[hx,hy,hz],[-hx,hy,hz],1.0],
+    [[hx,-hy,-hz],[-hx,-hy,-hz],[-hx,hy,-hz],[hx,hy,-hz],0.85],
+    [[hx,-hy,hz],[hx,-hy,-hz],[hx,hy,-hz],[hx,hy,hz],0.92],
+    [[-hx,-hy,-hz],[-hx,-hy,hz],[-hx,hy,hz],[-hx,hy,-hz],0.92],
+    [[-hx,hy,hz],[hx,hy,hz],[hx,hy,-hz],[-hx,hy,-hz],1.15],
+    [[hx,-hy,hz],[-hx,-hy,hz],[-hx,-hy,-hz],[hx,-hy,-hz],0.6],
+  ];
+  faces.forEach(([v0,v1,v2,v3,s])=>{
+    face(V,I,
+      [v0[0]+x,v0[1]+y,v0[2]+z],[v1[0]+x,v1[1]+y,v1[2]+z],
+      [v2[0]+x,v2[1]+y,v2[2]+z],[v3[0]+x,v3[1]+y,v3[2]+z],
+      Math.min(1,r*s),Math.min(1,g*s),Math.min(1,b*s));
+  });
+}
+function buildMesh(V,I){return{posBuf:mkBuf(V),idxBuf:mkIBuf(I),cnt:I.length};}
+
+// ── DRAW MESH ──
+function drawMesh(mesh,M,eye,view,opts){
+  if(!mesh) return;
+  const mvp=m4Mul(m4Mul(projMat,view),M);
+  gl.useProgram(PROG3D);
+  gl.uniformMatrix4fv(gl.getUniformLocation(PROG3D,'uMVP'),false,mvp);
+  gl.uniformMatrix4fv(gl.getUniformLocation(PROG3D,'uM'),false,M);
+  gl.uniform3fv(gl.getUniformLocation(PROG3D,'uEye'),[eye[0],eye[1],eye[2]]);
+  gl.uniform3fv(gl.getUniformLocation(PROG3D,'uLD'),opts.ld||[.5,1,.4]);
+  gl.uniform3fv(gl.getUniformLocation(PROG3D,'uLC'),opts.lc||[1,.95,.88]);
+  gl.uniform3fv(gl.getUniformLocation(PROG3D,'uAmb'),opts.amb||[.08,.1,.18]);
+  gl.uniform3fv(gl.getUniformLocation(PROG3D,'uEmi'),opts.emi||[0,0,0]);
+  gl.uniform1f(gl.getUniformLocation(PROG3D,'uMet'),opts.met!=null?opts.met:.5);
+  gl.uniform1f(gl.getUniformLocation(PROG3D,'uRgh'),opts.rgh!=null?opts.rgh:.5);
+  gl.uniform1f(gl.getUniformLocation(PROG3D,'uFog'),.00055);
+  attr(PROG3D,'aP',mesh.posBuf,3,9,0);
+  attr(PROG3D,'aN',mesh.posBuf,3,9,3);
+  attr(PROG3D,'aC',mesh.posBuf,3,9,6);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.idxBuf);
+  gl.drawElements(gl.TRIANGLES,mesh.cnt,gl.UNSIGNED_SHORT,0);
+}
+
+// ── CAR MESH BUILDER ──
+const CAR_DEFS=[
+  {name:'PHANTOM X',topSpeed:42,accel:18,brake:28,grip:.88,r:.0,g:.4,b:1.},
+  {name:'VIPER RS', topSpeed:38,accel:26,brake:32,grip:.92,r:1.,g:.08,b:.0},
+  {name:'TITAN GT', topSpeed:50,accel:13,brake:24,grip:.80,r:1.,g:.78,b:.0},
+];
+function buildCar(r,g,b){
+  const V=[],I=[];
+  // body
+  box(V,I,0,.18,0, 1.8,.38,4.2, r,g,b);
+  // cockpit
+  box(V,I,0,.52,-.1, 1.1,.34,1.7, .04,.06,.16);
+  // nose
+  box(V,I,0,.13,2.3, 1.1,.21,1.2, r*.9,g*.9,b*.9);
+  // side pods
+  box(V,I,-1.08,.12,.2, .36,.27,1.7, r*.85,g*.85,b*.85);
+  box(V,I, 1.08,.12,.2, .36,.27,1.7, r*.85,g*.85,b*.85);
+  // front wing
+  box(V,I,0,.02,2.85, 2.6,.07,.5, r*.7,g*.7,b*.7);
+  box(V,I,-1.3,.1,2.85, .07,.22,.6, r*.72,g*.72,b*.72);
+  box(V,I, 1.3,.1,2.85, .07,.22,.6, r*.72,g*.72,b*.72);
+  // rear wing
+  box(V,I,0,.58,-2.2, 2.4,.09,.55, r*.75,g*.75,b*.75);
+  box(V,I,0,.38,-2.2, 2.4,.07,.42, r*.7,g*.7,b*.7);
+  box(V,I,-.8,.45,-2.2, .1,.28,.1, .5,.5,.55);
+  box(V,I, .8,.45,-2.2, .1,.28,.1, .5,.5,.55);
+  box(V,I,-1.2,.47,-2.2, .07,.38,.6, r*.7,g*.7,b*.7);
+  box(V,I, 1.2,.47,-2.2, .07,.38,.6, r*.7,g*.7,b*.7);
+  // floor
+  box(V,I,0,-.05,0, 1.7,.06,3.8, .07,.07,.09);
+  for(let f=-3;f<=3;f++) box(V,I,f*.23,-.02,-2.1, .04,.17,.75, .06,.07,.1);
+  // headlights
+  box(V,I,-.65,.18,3.0, .28,.1,.06, 1.,1.,.88);
+  box(V,I, .65,.18,3.0, .28,.1,.06, 1.,1.,.88);
+  // tail lights
+  box(V,I,-.6,.2,-2.55, .25,.1,.06, 1.,.0,.0);
+  box(V,I, .6,.2,-2.55, .25,.1,.06, 1.,.0,.0);
+  // roll hoop
+  box(V,I,0,.72,-.5, .1,.42,.1, .75,.76,.8);
+  // mirrors
+  box(V,I,-1.,.45,.9, .38,.07,.18, .2,.2,.25);
+  box(V,I, 1.,.45,.9, .38,.07,.18, .2,.2,.25);
+  // wheels
+  [[- 1.1,0,-1.55],[1.1,0,-1.55],[-1.1,0,1.55],[1.1,0,1.55]].forEach(([wx,wy,wz])=>{
+    const wr=.42,ww=.32,WSEG=10;
+    for(let s=0;s<WSEG;s++){
+      const a0=s/WSEG*Math.PI*2,a1=(s+1)/WSEG*Math.PI*2;
+      const c0=Math.cos(a0),s0=Math.sin(a0),c1=Math.cos(a1),s1=Math.sin(a1);
+      const vv=[[wx-ww/2,wy+c0*wr,wz+s0*wr],[wx+ww/2,wy+c0*wr,wz+s0*wr],[wx+ww/2,wy+c1*wr,wz+s1*wr],[wx-ww/2,wy+c1*wr,wz+s1*wr]];
+      const ax=vv[1][0]-vv[0][0],ay=vv[1][1]-vv[0][1],az=vv[1][2]-vv[0][2];
+      const bx=vv[2][0]-vv[0][0],by=vv[2][1]-vv[0][1],bz=vv[2][2]-vv[0][2];
+      let [nx,ny,nz]=cross3(ax,ay,az,bx,by,bz);
+      const nl=Math.sqrt(nx*nx+ny*ny+nz*nz)||1;nx/=nl;ny/=nl;nz/=nl;
+      const base=V.length/9;
+      vv.forEach(v=>V.push(...v,nx,ny,nz,.11,.11,.13));
+      I.push(base,base+1,base+2,base,base+2,base+3);
+    }
+    box(V,I,wx,wy,wz, ww+.02,wr*.55,wr*.55, .74,.75,.8);
+  });
+  return buildMesh(V,I);
+}
+
+// ── TRACK ──
+const TSEGS=120, TRAD=180, TW=22;
+let spline=[];
+
+function genSpline(){
+  spline=[];
+  for(let i=0;i<TSEGS;i++){
+    const t=i/TSEGS*Math.PI*2;
+    const r=TRAD+Math.sin(t*3)*45+Math.cos(t*5)*20;
+    spline.push({x:Math.cos(t)*r, y:Math.sin(t*4)*8+Math.cos(t*2)*4, z:Math.sin(t)*r*.65});
+  }
+}
+
+// SAFE getTrackPoint — always guards spline
+function gTP(t){
+  if(!spline||spline.length===0) return {x:0,y:0,z:0};
+  const n=TSEGS;
+  const raw=((t%1)+1)%1*n;
+  const i0=Math.floor(raw)%n;
+  const i1=(i0+1)%n;
+  const f=raw-i0;
+  const p0=spline[i0]||{x:0,y:0,z:0};
+  const p1=spline[i1]||{x:0,y:0,z:0};
+  return{x:p0.x+(p1.x-p0.x)*f, y:p0.y+(p1.y-p0.y)*f, z:p0.z+(p1.z-p0.z)*f};
+}
+function gTT(t){
+  const p0=gTP((t-.002+1)%1),p1=gTP((t+.002)%1);
+  const dx=p1.x-p0.x,dy=p1.y-p0.y,dz=p1.z-p0.z;
+  const l=Math.sqrt(dx*dx+dy*dy+dz*dz)||1;
+  return{x:dx/l,y:dy/l,z:dz/l};
+}
+function gTR(t){
+  const tang=gTT(t);
+  const [rx,ry,rz]=cross3(tang.x,tang.y,tang.z,0,1,0);
+  const [nx,ny,nz]=norm3(rx,ry,rz);
+  return{x:nx,y:ny,z:nz};
+}
+
+// arc length table
+let arcLen=0, arcTable=[];
+function computeArc(){
+  arcLen=0; arcTable=[];
+  const steps=800;
+  let pp=gTP(0); arcTable.push(0);
+  for(let i=1;i<=steps;i++){
+    const p=gTP(i/steps);
+    const dx=p.x-pp.x,dy=p.y-pp.y,dz=p.z-pp.z;
+    arcLen+=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    arcTable.push(arcLen);
+    pp=p;
+  }
+}
+function tFromArc(arc){
+  if(arcLen===0) return 0;
+  const tgt=((arc%arcLen)+arcLen)%arcLen;
+  let lo=0,hi=arcTable.length-1;
+  while(lo<hi-1){const mid=(lo+hi)>>1;if(arcTable[mid]<tgt)lo=mid;else hi=mid;}
+  const fr=(tgt-arcTable[lo])/(arcTable[hi]-arcTable[lo]||1);
+  return(lo+fr)/arcTable.length;
+}
+
+// build track mesh
+let tMesh=null, bMesh=null;
+function buildTrack(){
+  const V=[],I=[],BV=[],BI=[];
+  const steps=TSEGS*8;
+  for(let i=0;i<steps;i++){
+    const t0=i/steps, t1=(i+1)/steps;
+    const p0=gTP(t0),p1=gTP(t1),r0=gTR(t0),r1=gTR(t1);
+    const hw=TW/2;
+    const ci=Math.floor(i/4)%2;
+    const rc=ci?.115:.11, gc=ci?.115:.11, bc=ci?.14:.13;
+    face(V,I,
+      [p0.x-r0.x*hw,p0.y,p0.z-r0.z*hw],[p0.x+r0.x*hw,p0.y,p0.z+r0.z*hw],
+      [p1.x+r1.x*hw,p1.y,p1.z+r1.z*hw],[p1.x-r1.x*hw,p1.y,p1.z-r1.z*hw],
+      rc,gc,bc);
+    // kerbs
+    const cw=1.2,ci2=Math.floor(i/2)%2;
+    const kr=ci2?.88:.92, kg=ci2?.1:.88, kb=ci2?.1:.1;
+    face(V,I,
+      [p0.x-r0.x*(hw+cw),p0.y+.05,p0.z-r0.z*(hw+cw)],[p0.x-r0.x*hw,p0.y+.05,p0.z-r0.z*hw],
+      [p1.x-r1.x*hw,p1.y+.05,p1.z-r1.z*hw],[p1.x-r1.x*(hw+cw),p1.y+.05,p1.z-r1.z*(hw+cw)],
+      kr,kg,kb);
+    face(V,I,
+      [p0.x+r0.x*hw,p0.y+.05,p0.z+r0.z*hw],[p0.x+r0.x*(hw+cw),p0.y+.05,p0.z+r0.z*(hw+cw)],
+      [p1.x+r1.x*(hw+cw),p1.y+.05,p1.z+r1.z*(hw+cw)],[p1.x+r1.x*hw,p1.y+.05,p1.z+r1.z*hw],
+      kr,kg,kb);
+    // center dashes
+    if(i%6<3){
+      face(V,I,
+        [p0.x-r0.x*.18,p0.y+.06,p0.z-r0.z*.18],[p0.x+r0.x*.18,p0.y+.06,p0.z+r0.z*.18],
+        [p1.x+r1.x*.18,p1.y+.06,p1.z+r1.z*.18],[p1.x-r1.x*.18,p1.y+.06,p1.z-r1.z*.18],
+        .88,.88,.88);
+    }
+    // barriers
+    const bh=1.1,bw2=.5,bi2=Math.floor(i/3)%2;
+    const brr=bi2?.84:.9, brg=bi2?.08:.9, brb=bi2?.08:.1;
+    [-1,1].forEach(s=>{
+      const ox=(hw+cw+.3)*s, ox2=(hw+cw+bw2+.3)*s;
+      face(BV,BI,
+        [p0.x+r0.x*ox,p0.y,p0.z+r0.z*ox],[p0.x+r0.x*ox2,p0.y,p0.z+r0.z*ox2],
+        [p1.x+r1.x*ox2,p1.y,p1.z+r1.z*ox2],[p1.x+r1.x*ox,p1.y,p1.z+r1.z*ox],
+        brr,brg,brb);
+      face(BV,BI,
+        [p0.x+r0.x*ox,p0.y,p0.z+r0.z*ox],[p0.x+r0.x*ox,p0.y+bh,p0.z+r0.z*ox],
+        [p1.x+r1.x*ox,p1.y+bh,p1.z+r1.z*ox],[p1.x+r1.x*ox,p1.y,p1.z+r1.z*ox],
+        brr,brg,brb);
+    });
+  }
+  // ground plane
+  face(V,I,[-700,-3,-700],[700,-3,-700],[700,-3,700],[-700,-3,700],.04,.06,.04);
+  tMesh=buildMesh(V,I);
+  bMesh=buildMesh(BV,BI);
+}
+
+// city buildings
+let cityMeshes=[];
+function buildCity(){
+  cityMeshes=[];
+  for(let i=0;i<60;i++){
+    const a=i/60*Math.PI*2, d=350+Math.random()*200;
+    const w=12+Math.random()*28, h=28+Math.random()*160, dp=12+Math.random()*28;
+    const V=[],I=[];
+    box(V,I,0,0,0,w,h,dp, Math.random()*.04,Math.random()*.04,.06+Math.random()*.08);
+    const er=Math.random()<.5?.0:.8, eg=.08, eb=Math.random()<.5?.9:.1;
+    cityMeshes.push({mesh:buildMesh(V,I), x:Math.cos(a)*d, y:h/2-3, z:Math.sin(a)*d, er,eg,eb});
+  }
+}
+
+// ── PARTICLES ──
+const MAXP=500;
+const pBufPos=mkBuf(new Float32Array(MAXP*3),true);
+const pBufSz=mkBuf(new Float32Array(MAXP),true);
+const pBufCol=mkBuf(new Float32Array(MAXP*3),true);
+const pBufA=mkBuf(new Float32Array(MAXP),true);
+const parts=[];
+function addP(x,y,z,vx,vy,vz,r,g,b,sz,life){
+  if(parts.length>=MAXP-1)return;
+  parts.push({x,y,z,vx,vy,vz,r,g,b,sz,life,ml:life});
+}
+function tickP(dt){
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;p.vy-=1.5*dt;p.life-=dt;
+    if(p.life<=0)parts.splice(i,1);
+  }
+}
+function drawParts(vp){
+  const n=Math.min(parts.length,MAXP);if(!n)return;
+  const pp=new Float32Array(n*3),ps=new Float32Array(n),pc=new Float32Array(n*3),pa=new Float32Array(n);
+  for(let i=0;i<n;i++){
+    const p=parts[i],a=p.life/p.ml;
+    pp[i*3]=p.x;pp[i*3+1]=p.y;pp[i*3+2]=p.z;
+    ps[i]=p.sz*a; pc[i*3]=p.r;pc[i*3+1]=p.g;pc[i*3+2]=p.b; pa[i]=a*.9;
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER,pBufPos);gl.bufferSubData(gl.ARRAY_BUFFER,0,pp);
+  gl.bindBuffer(gl.ARRAY_BUFFER,pBufSz);gl.bufferSubData(gl.ARRAY_BUFFER,0,ps);
+  gl.bindBuffer(gl.ARRAY_BUFFER,pBufCol);gl.bufferSubData(gl.ARRAY_BUFFER,0,pc);
+  gl.bindBuffer(gl.ARRAY_BUFFER,pBufA);gl.bufferSubData(gl.ARRAY_BUFFER,0,pa);
+  gl.useProgram(PROGPART);
+  gl.uniformMatrix4fv(gl.getUniformLocation(PROGPART,'uVP'),false,vp);
+  attr(PROGPART,'aP',pBufPos,3,3,0);
+  attr(PROGPART,'aSz',pBufSz,1,1,0);
+  attr(PROGPART,'aC',pBufCol,3,3,0);
+  attr(PROGPART,'aA',pBufA,1,1,0);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE);
+  gl.depthMask(false);
+  gl.drawArrays(gl.POINTS,0,n);
+  gl.depthMask(true);gl.disable(gl.BLEND);
+}
+
+// ── INPUT ──
+const KB={};
+document.addEventListener('keydown',e=>{KB[e.code]=true;if(e.code==='KeyC')camMode=(camMode+1)%2;});
+document.addEventListener('keyup',e=>{KB[e.code]=false;});
+let joyX=0,jDn=false,jTid=null;
+const jB=document.getElementById('jb'),jK=document.getElementById('jk');
+function jMove(cx){let dx=cx-jB.getBoundingClientRect().left-jB.offsetWidth/2;dx=Math.max(-36,Math.min(36,dx));joyX=dx/36;jK.style.left=(36+dx-22)+'px';}
+document.getElementById('jw').addEventListener('touchstart',e=>{const t=e.changedTouches[0];jTid=t.identifier;jDn=true;jMove(t.clientX);e.preventDefault();},{passive:false});
+document.addEventListener('touchmove',e=>{if(!jDn)return;for(const t of e.changedTouches)if(t.identifier===jTid){jMove(t.clientX);break;}e.preventDefault();},{passive:false});
+document.addEventListener('touchend',e=>{for(const t of e.changedTouches)if(t.identifier===jTid){jDn=false;joyX=0;jTid=null;jK.style.left='14px';break;}});
+document.getElementById('jw').addEventListener('mousedown',e=>{jDn=true;jMove(e.clientX);});
+document.addEventListener('mousemove',e=>{if(jDn)jMove(e.clientX);});
+document.addEventListener('mouseup',()=>{jDn=false;joyX=0;jK.style.left='14px';});
+const TB={gas:false,brk:false,bst:false};
+function bnd(id,k){
+  const el=document.getElementById(id);
+  const on=e=>{e.preventDefault();TB[k]=true;el.classList.add('on');};
+  const off=()=>{TB[k]=false;el.classList.remove('on');};
+  el.addEventListener('touchstart',on,{passive:false});
+  el.addEventListener('touchend',off);el.addEventListener('touchcancel',off);
+  el.addEventListener('mousedown',on);document.addEventListener('mouseup',off);
+}
+bnd('bgas','gas');bnd('bbrk','brk');bnd('bbst','bst');
+const isG=()=>KB.ArrowUp||KB.KeyW||TB.gas;
+const isB=()=>KB.ArrowDown||KB.KeyS||TB.brk;
+const isBt=()=>(KB.Space||TB.bst)&&boostFuel>.01;
+const isL=()=>KB.ArrowLeft||KB.KeyA;
+const isR=()=>KB.ArrowRight||KB.KeyD;
+
+// ── GAME STATE ──
+let gameRunning=false,raceDone=false,cdActive=false;
+let carSel=0;
+let lapCount=0,LAPS=3,lapStart=0,bestLap=Infinity;
+let pArc=0,pOff=0,pSpd=0,pSteer=0,boostFuel=1;
+let pGear=1,pRPM=0,pPos=1;
+let camMode=0;
+let camX=0,camY=0,camZ=0;
+let camTX=0,camTY=0,camTZ=0;
+let camYaw=0;
+let gTime=0;
+
+let playerMesh=null;
+const AIs=[];
+const aiMeshes=[];
+const AI_COLS=[[1,.1,.0],[.0,1,.3],[.7,.0,1],[1,.5,.0],[.0,.8,1],[1,.0,.6],[.8,1,.0]];
+
+function initAI(){
+  AIs.length=0;aiMeshes.length=0;
+  for(let i=0;i<7;i++){
+    const[ar,ag,ab]=AI_COLS[i%AI_COLS.length];
+    aiMeshes.push(buildCar(ar,ag,ab));
+    AIs.push({arc:-(i+1)*arcLen/8*.9, off:0, spd:0, top:30+Math.random()*20, acc:8+Math.random()*7, wt:Math.random()*Math.PI*2, wo:Math.random()*.015});
+  }
+}
+
+const CPS=[];
+function initCPs(){
+  CPS.length=0;
+  for(let i=0;i<12;i++) CPS.push(i/12*arcLen);
+}
+let cpIdx=0;
+
+// ── PHYSICS ──
+function tickPhys(dt){
+  if(!gameRunning||raceDone) return;
+  const cfg=CAR_DEFS[carSel];
+  const gas=isG(),brk=isB(),bst=isBt();
+  let si=0;if(isL())si-=1;if(isR())si+=1;si+=joyX;si=Math.max(-1,Math.min(1,si));
+
+  const top=cfg.topSpeed*(bst?1.42:1);
+  if(gas) pSpd+=cfg.accel*dt*(1-pSpd/top*.8);
+  else if(brk){if(pSpd>0.05)pSpd-=cfg.brake*dt*.5;else pSpd=Math.max(-7,pSpd-cfg.accel*.3*dt);}
+  else pSpd*=(1-dt*.85);
+  pSpd=Math.max(-7,Math.min(top,pSpd));
+
+  if(bst)boostFuel=Math.max(0,boostFuel-dt*.26);
+  else boostFuel=Math.min(1,boostFuel+dt*.1);
+
+  const grip=cfg.grip*(1-Math.abs(pSpd)/cfg.topSpeed*.25);
+  pSteer+=si*grip*3*dt; pSteer*=(1-dt*3); pSteer=Math.max(-1,Math.min(1,pSteer));
+
+  pArc+=pSpd*dt;
+  pOff+=pSteer*Math.abs(pSpd)*dt*.55;
+  if(Math.abs(pOff)>TW/2-1.2){
+    pOff=Math.sign(pOff)*(TW/2-1.2);
+    pSpd*=.72; pSteer*=-.25;
+    const t=tFromArc(pArc),p=gTP(t),r=gTR(t);
+    for(let i=0;i<8;i++) addP(p.x+r.x*pOff+(Math.random()-.5)*.5,p.y+.3,p.z+r.z*pOff+(Math.random()-.5)*.5,(Math.random()-.5)*4,2+Math.random()*3,(Math.random()-.5)*4,1,.7,.1,.3,.45);
+  }
+
+  pGear=Math.max(1,Math.min(7,Math.ceil(Math.abs(pSpd)/cfg.topSpeed*7)));
+  pRPM=Math.min(1,(Math.abs(pSpd)%(cfg.topSpeed/7))/(cfg.topSpeed/7+.001));
+  if(gas&&pRPM<.15)pRPM=.15+Math.random()*.1;
+
+  // exhaust + smoke particles
+  const t0=tFromArc(pArc),tp=gTP(t0),tang=gTT(t0),tr=gTR(t0);
+  const ex=tp.x+tr.x*pOff-tang.x*2.5;
+  const ez=tp.z+tr.z*pOff-tang.z*2.5;
+  if((gas||bst)&&Math.random()<.4){
+    const[er,eg,eb]=bst?[0,.5,1]:[1,.38,.04];
+    addP(ex+(Math.random()-.5)*.3,tp.y+.2,ez+(Math.random()-.5)*.3,-tang.x*(1+Math.random())*.8+(Math.random()-.5)*.3,.5+Math.random(),-tang.z*(1+Math.random())*.8+(Math.random()-.5)*.3,er,eg,eb,bst?.45:.3,.55+Math.random()*.3);
+  }
+  if(Math.abs(pSteer)>.6&&Math.abs(pSpd)>12&&Math.random()<.2)
+    addP(tp.x+tr.x*pOff+(Math.random()-.5)*.5,tp.y+.05,tp.z+tr.z*pOff+(Math.random()-.5)*.5,(Math.random()-.5)*.5,.3+Math.random()*.3,(Math.random()-.5)*.5,.6,.6,.65,.7,1.1);
+
+  // checkpoint
+  const normArc=((pArc%arcLen)+arcLen)%arcLen;
+  const cp=CPS[cpIdx%CPS.length];
+  if(Math.abs(normArc-cp)<25||(arcLen-Math.abs(normArc-cp))<25){
+    cpIdx++;
+    if(cpIdx%CPS.length===0){
+      lapCount++;
+      const now=performance.now(),lt=(now-lapStart)/1e3;
+      lapStart=now;if(lt<bestLap&&lapCount>0)bestLap=lt;
+      if(lapCount>=LAPS)finishRace();
+    }
+  }
+}
+
+function tickAI(dt){
+  AIs.forEach(ai=>{
+    ai.spd+=(ai.top-ai.spd)*ai.acc*.005; ai.arc+=ai.spd*dt;
+    ai.wt+=dt; ai.off=Math.sin(ai.wt*.8)*ai.wo*TW*.3;
+  });
+  pPos=1; AIs.forEach(ai=>{if(ai.arc>pArc)pPos++;});
+}
+
+// ── CAMERA ──
+function tickCam(){
+  if(!spline||spline.length===0){camX=0;camY=5;camZ=20;camTX=0;camTY=0;camTZ=0;return;}
+  const t=tFromArc(pArc),tp=gTP(t),tang=gTT(t),tr=gTR(t);
+  const px=tp.x+tr.x*pOff, py=tp.y+.4, pz=tp.z+tr.z*pOff;
+  if(camMode===0){
+    const tx=px-tang.x*8.5, ty=py+2.8, tz=pz-tang.z*8.5;
+    camX+=(tx-camX)*.12; camY+=(ty-camY)*.1; camZ+=(tz-camZ)*.12;
+    camTX=px+tang.x*10; camTY=py+.8; camTZ=pz+tang.z*10;
+  } else {
+    camX=px+tang.x*.5; camY=py+1.; camZ=pz+tang.z*.5;
+    camTX=px+tang.x*20; camTY=py; camTZ=pz+tang.z*20;
+  }
+  camYaw=Math.atan2(tang.x,tang.z);
+}
+
+// ── HUD ──
+const fmtT=t=>{const m=Math.floor(t/60),s=Math.floor(t%60),ms=Math.floor((t%1)*1e3);return`${m}:${String(s).padStart(2,'0')}.${String(ms).padStart(3,'0')}`;};
+const rpmBarEl=document.getElementById('rpm-bar');
+const RSEGS=16;
+for(let i=0;i<RSEGS;i++){const s=document.createElement('div');s.className='rs';const p=i/RSEGS;s.style.cssText=`height:${10+i*.75}px;min-width:5px;background:${p<.5?'#00ff88':p<.8?'#ffcc00':'#ff2200'}`;rpmBarEl.appendChild(s);}
+
+function tickHUD(){
+  if(!gameRunning)return;
+  document.getElementById('hspd-n').textContent=Math.abs(Math.round(pSpd*3.6));
+  document.getElementById('hgear-n').textContent=pSpd<-.3?'R':pGear;
+  document.getElementById('hpos-n').textContent=pPos;
+  const el=(performance.now()-lapStart)/1e3;
+  document.getElementById('htim').textContent=fmtT(el);
+  document.getElementById('hlap-l').textContent=`LAP ${Math.min(lapCount+1,LAPS)} / ${LAPS}`;
+  if(bestLap<Infinity)document.getElementById('hbst').textContent='BEST: '+fmtT(bestLap);
+  const segs=rpmBarEl.querySelectorAll('.rs'),rl=Math.floor(pRPM*RSEGS);
+  segs.forEach((s,i)=>s.style.opacity=i<rl?1:.1);
+  document.getElementById('bfill').style.width=(boostFuel*100)+'%';
+  const fx=document.getElementById('fx');
+  if(isBt()){fx.style.background='radial-gradient(ellipse,transparent 20%,#00f0ff22 100%)';fx.style.opacity='1';}
+  else if(Math.abs(pOff)>TW/2-2){fx.style.background='radial-gradient(ellipse,transparent 40%,#ff000033 100%)';fx.style.opacity='1';}
+  else fx.style.opacity='0';
+}
+
+// ── RENDER ──
+function render(){
+  gl.viewport(0,0,W,H);
+  gl.clearColor(0,.01,.04,1);
+  gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+
+  // Sky (no depth)
+  gl.useProgram(PROGSKY);
+  gl.uniform1f(gl.getUniformLocation(PROGSKY,'uT'),gTime);
+  gl.uniform1f(gl.getUniformLocation(PROGSKY,'uYaw'),camYaw/(Math.PI*2));
+  gl.bindBuffer(gl.ARRAY_BUFFER,skyBuf);
+  const aPs=gl.getAttribLocation(PROGSKY,'aP');
+  gl.enableVertexAttribArray(aPs);gl.vertexAttribPointer(aPs,2,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,skyIBuf);
+  gl.disable(gl.DEPTH_TEST);gl.drawElements(gl.TRIANGLES,6,gl.UNSIGNED_SHORT,0);
+  gl.enable(gl.DEPTH_TEST);gl.depthFunc(gl.LEQUAL);
+
+  const view=m4LookAt(camX,camY,camZ,camTX,camTY,camTZ,0,1,0);
+  const eye=[camX,camY,camZ];
+  const opts={ld:[.5,1.,.4],lc:[1.,.95,.88],amb:[.08,.1,.18]};
+
+  if(tMesh)drawMesh(tMesh,m4(),eye,view,{...opts,met:.0,rgh:.95});
+  if(bMesh)drawMesh(bMesh,m4(),eye,view,{...opts,met:.3,rgh:.5});
+
+  cityMeshes.forEach(c=>{
+    const t=m4T(c.x,c.y,c.z);
+    const pulse=.3+.22*Math.sin(gTime*.8+c.x*.1);
+    drawMesh(c.mesh,t,eye,view,{...opts,met:.0,rgh:1.,emi:[c.er*pulse,c.eg*pulse,c.eb*pulse]});
+  });
+
+  if(playerMesh&&spline.length>0){
+    const t=tFromArc(pArc),tp=gTP(t),tang=gTT(t),tr=gTR(t);
+    const px=tp.x+tr.x*pOff, py=tp.y+.42, pz2=tp.z+tr.z*pOff;
+    const yaw=Math.atan2(tang.x,tang.z);
+    const pitch=-Math.asin(Math.max(-.5,Math.min(.5,tang.y)));
+    let M=m4T(px,py,pz2); M=m4Mul(M,m4RY(yaw)); M=m4Mul(M,m4RX(pitch)); M=m4Mul(M,m4RZ(-pSteer*.12));
+    const cfg=CAR_DEFS[carSel];
+    const be=isBt()?[cfg.r*.5,cfg.g*.3,cfg.b+.5]:[cfg.r*.12,cfg.g*.12,cfg.b*.12];
+    drawMesh(playerMesh,M,eye,view,{...opts,met:.95,rgh:.07,emi:be});
+  }
+
+  AIs.forEach((ai,i)=>{
+    if(!aiMeshes[i]||spline.length===0)return;
+    const t=tFromArc(ai.arc),ap=gTP(t),at=gTT(t),ar=gTR(t);
+    const ax=ap.x+ar.x*ai.off, ay=ap.y+.42, az=ap.z+ar.z*ai.off;
+    let M=m4T(ax,ay,az); M=m4Mul(M,m4RY(Math.atan2(at.x,at.z)));
+    const[er,eg,eb]=AI_COLS[i%AI_COLS.length];
+    drawMesh(aiMeshes[i],M,eye,view,{...opts,met:.92,rgh:.1,emi:[er*.12,eg*.12,eb*.12]});
+  });
+
+  drawParts(m4Mul(projMat,view));
+}
+
+// ── LIFECYCLE ──
+function initGame(){
+  genSpline();
+  computeArc();
+  buildTrack();
+  buildCity();
+  initCPs();
+  const c=CAR_DEFS[carSel];
+  playerMesh=buildCar(c.r,c.g,c.b);
+  initAI();
+  pArc=0;pOff=0;pSpd=0;pSteer=0;boostFuel=1;
+  lapCount=0;cpIdx=0;bestLap=Infinity;parts.length=0;
+  // init cam pos so it doesn't start at origin
+  const tp0=gTP(0),tang0=gTT(0);
+  camX=tp0.x-tang0.x*9; camY=tp0.y+3; camZ=tp0.z-tang0.z*9;
+  camTX=tp0.x;camTY=tp0.y;camTZ=tp0.z;
+}
+
+function pc(i,el){carSel=i;document.querySelectorAll('.cd').forEach(c=>c.classList.remove('sl'));el.classList.add('sl');}
+
+function startCountdown(){
+  cdActive=true;
+  const cdEl=document.getElementById('cds'),cdN=document.getElementById('cdn');
+  cdEl.style.display='flex';let cnt=3;
+  const tick=()=>{
+    cdN.textContent=cnt===0?'GO!':cnt;
+    cdN.style.color=cnt===0?'#00ff88':'#ff4e00';
+    cdN.style.textShadow=`0 0 40px ${cnt===0?'#00ff88':'#ff4e00'}`;
+    cdN.style.animation='none';void cdN.offsetWidth;cdN.style.animation='cp .38s ease-out';
+    if(cnt===0){setTimeout(()=>{cdEl.style.display='none';cdActive=false;gameRunning=true;lapStart=performance.now();},600);}
+    else{cnt--;setTimeout(tick,900);}
+  };tick();
+}
+function startGame(){document.getElementById('ss').style.display='none';initGame();startCountdown();}
+function finishRace(){
+  raceDone=true;gameRunning=false;
+  document.getElementById('fst').innerHTML=`POSITION: ${pPos} / 8<br>BEST LAP: ${fmtT(bestLap)}<br>CAR: ${CAR_DEFS[carSel].name}`;
+  document.getElementById('fsc').style.display='flex';
+}
+function restart(){
+  document.getElementById('fsc').style.display='none';
+  raceDone=false;gameRunning=false;cityMeshes.length=0;tMesh=null;bMesh=null;playerMesh=null;
+  initGame();startCountdown();
+}
+
+// ── MAIN LOOP ── guarded: only renders, never crashes before initGame
+let lastT=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  const dt=Math.min((ts-lastT)/1e3,.05);lastT=ts;gTime=ts/1e3;
+  // Only update/render if spline exists (i.e. after startGame)
+  if(spline.length>0){
+    tickPhys(dt);tickAI(dt);tickP(dt);tickCam();tickHUD();render();
+  } else {
+    // Just clear screen with gradient while on start screen
+    gl.viewport(0,0,W,H);
+    gl.clearColor(0,.003,.015,1);
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  }
+}
+
+if(!('ontouchstart' in window)) document.getElementById('ctrl').style.opacity='.4';
+loop(0);
+</script>
+</body>
+</html>
